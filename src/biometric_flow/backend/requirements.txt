@@ -1,0 +1,26 @@
+# Backend Services Requirements
+# Core backend dependencies for place backends and unified gateway
+
+# FastAPI Framework
+fastapi==0.116.1
+uvicorn==0.35.0
+gunicorn==23.0.0
+
+# Async HTTP Client
+aiohttp==3.12.15
+aiofiles==24.1.0
+
+# ZK Fingerprint Device Library
+pyzk==0.9
+
+# Templates
+Jinja2==3.1.6
+
+# Configuration
+python-decouple==3.8
+
+# Date/Time handling
+python-dateutil==2.9.0.post0
+
+# Logging
+loguru==0.7.3

@@ -1,0 +1,23 @@
+# Frontend Requirements
+# Streamlit web application dependencies
+
+# Core Framework
+streamlit==1.47.1
+
+# Data Processing
+pandas==2.0.3
+numpy==1.26.4
+
+# Visualization
+plotly==5.15.0
+altair==5.5.0
+
+# HTTP Client
+requests==2.32.3
+aiohttp==3.12.15
+
+# Date/Time
+python-dateutil==2.9.0.post0
+
+# Configuration
+python-decouple==3.8

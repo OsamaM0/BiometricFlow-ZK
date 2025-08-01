@@ -1,0 +1,10 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"command": "echo Enhancing project structure and assets...",
+			"label": "Enhance Project Structure",
+			"type": "shell"
+		}
+	]
+}

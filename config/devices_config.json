@@ -1,0 +1,20 @@
+{
+  "Back Office": {
+    "name": "Back Office",
+    "ip": "192.168.1.151",
+    "port": 4370,
+    "password": 0
+  },
+  "Show-Room-1": {
+    "name": "Show-Room-1",
+    "ip": "192.168.40.27",
+    "port": 4370,
+    "password": 0
+  },
+  "Show-Room-4": {
+    "name": "Show-Room-4",
+    "ip": "192.168.40.111", 
+    "port": 4370,
+    "password": 0
+  }
+}

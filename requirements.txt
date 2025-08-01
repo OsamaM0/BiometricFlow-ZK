@@ -1,0 +1,75 @@
+# =================================================================
+# Multi-Place Fingerprint Attendance System - Root Requirements
+# =================================================================
+# This file contains all dependencies for the complete system
+# Use this for development setup or complete system deployment
+
+# Backend API Framework
+fastapi==0.116.1
+uvicorn==0.35.0
+gunicorn==23.0.0
+
+# Async HTTP Client for Gateway
+aiohttp==3.12.15
+aiofiles==24.1.0
+
+# Frontend Web Application
+streamlit==1.47.1
+
+# Data Processing and Visualization
+pandas==2.0.3
+plotly==5.15.0
+numpy==1.24.3
+
+# Date and Time Utilities
+python-dateutil==2.8.2
+
+# ZK Fingerprint Device Integration
+pyzk==0.9
+
+# Template Engine
+Jinja2==3.1.6
+
+# HTTP Requests
+requests==2.31.0
+
+# Development Tools
+pytest==7.4.0
+pytest-asyncio==0.21.1
+black==23.7.0
+flake8==6.0.0
+
+# Documentation
+markdown==3.4.4
+mkdocs==1.5.0
+mkdocs-material==9.1.21
+
+# Security and Validation
+pydantic==2.1.1
+python-multipart==0.0.6
+
+# Calendar and Holiday Management (optional)
+python-calendrical>=1.0.0
+
+# Logging and Monitoring
+structlog==23.1.0
+
+# Environment Management
+python-dotenv==1.0.0
+
+# Performance and Monitoring
+psutil==5.9.5
+
+# Cross-platform process management
+supervisor==4.2.5
+
+# Database support (for future enhancements)
+sqlalchemy==2.0.19
+alembic==1.11.1
+
+# Testing and Quality Assurance
+coverage==7.3.0
+pre-commit==3.3.3
+
+# API Documentation
+redoc==2.0.0
