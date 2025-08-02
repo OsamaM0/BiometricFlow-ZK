@@ -1,0 +1,475 @@
+{
+	"info": {
+		"_postman_id": "place-backend-api-collection",
+		"name": "🔒 BiometricFlow-ZK Place Backend API",
+		"description": "Complete API collection for BiometricFlow-ZK Place Backend with enhanced security features\n\n**Authentication Required:** All endpoints require Bearer token authentication\n\n**Base URL:** {{base_url}} (default: http://localhost:8000)\n\n**API Key:** {{api_key}} - Set in environment variables\n\n**Version:** 3.0.0",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🏠 Core Endpoints",
+			"item": [
+				{
+					"name": "Root - API Information",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						},
+						"description": "Get basic API information including service details, version, and security status"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check - Fast",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Fast health check endpoint (no authentication required for monitoring)"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check - Full",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health/full",
+							"host": ["{{base_url}}"],
+							"path": ["health", "full"]
+						},
+						"description": "Comprehensive health check with actual device connection testing"
+					},
+					"response": []
+				}
+			],
+			"description": "Core API endpoints for system information and health monitoring"
+		},
+		{
+			"name": "📱 Device Management",
+			"item": [
+				{
+					"name": "Get All Devices",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/devices",
+							"host": ["{{base_url}}"],
+							"path": ["devices"]
+						},
+						"description": "Get list of all configured fingerprint devices with their connection status"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Device Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/device/info?device_name={{device_name}}",
+							"host": ["{{base_url}}"],
+							"path": ["device", "info"],
+							"query": [
+								{
+									"key": "device_name",
+									"value": "{{device_name}}",
+									"description": "Name of the specific device"
+								}
+							]
+						},
+						"description": "Get detailed information for a specific fingerprint device"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for managing and monitoring fingerprint devices"
+		},
+		{
+			"name": "👥 User Management",
+			"item": [
+				{
+					"name": "Get Users from Device",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users?device_name={{device_name}}",
+							"host": ["{{base_url}}"],
+							"path": ["users"],
+							"query": [
+								{
+									"key": "device_name",
+									"value": "{{device_name}}",
+									"description": "Name of the fingerprint device"
+								}
+							]
+						},
+						"description": "Get list of all users enrolled in a specific fingerprint device"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users from All Devices",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/users/all",
+							"host": ["{{base_url}}"],
+							"path": ["users", "all"]
+						},
+						"description": "Get comprehensive list of all users from all configured devices"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for user management and retrieval"
+		},
+		{
+			"name": "📊 Attendance Data",
+			"item": [
+				{
+					"name": "Get Attendance Data",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/attendance?start_date={{start_date}}&end_date={{end_date}}&device_name={{device_name}}&user_name={{user_name}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{base_url}}"],
+							"path": ["attendance"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "device_name",
+									"value": "{{device_name}}",
+									"description": "Name of the fingerprint device"
+								},
+								{
+									"key": "user_name",
+									"value": "{{user_name}}",
+									"description": "Filter by specific user name (optional)"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays in YYYY-MM-DD format (optional)"
+								}
+							]
+						},
+						"description": "Get attendance records for a specific device and date range"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Attendance Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendance/all?start_date={{start_date}}&end_date={{end_date}}&user_name={{user_name}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{base_url}}"],
+							"path": ["attendance", "all"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "user_name",
+									"value": "{{user_name}}",
+									"description": "Filter by specific user name (optional)"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get attendance records from all devices for specified date range"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for retrieving attendance data and records"
+		},
+		{
+			"name": "📈 Attendance Summary",
+			"item": [
+				{
+					"name": "Get Attendance Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendance/summary?start_date={{start_date}}&end_date={{end_date}}&device_name={{device_name}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{base_url}}"],
+							"path": ["attendance", "summary"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "device_name",
+									"value": "{{device_name}}",
+									"description": "Name of the fingerprint device"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get attendance summary statistics for a specific device"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Attendance Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/attendance/summary/all?start_date={{start_date}}&end_date={{end_date}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{base_url}}"],
+							"path": ["attendance", "summary", "all"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get comprehensive attendance summary for all devices"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for attendance analytics and summary reports"
+		},
+		{
+			"name": "📅 Holiday Management",
+			"item": [
+				{
+					"name": "Get Holidays",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/holidays",
+							"host": ["{{base_url}}"],
+							"path": ["holidays"]
+						},
+						"description": "Get current configured holidays list"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Custom Holidays",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"dates\": [\n    \"2024-01-01\",\n    \"2024-07-04\",\n    \"2024-12-25\"\n  ],\n  \"description\": \"New Year, Independence Day, Christmas\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/holidays/validate",
+							"host": ["{{base_url}}"],
+							"path": ["holidays", "validate"]
+						},
+						"description": "Validate custom holiday dates format and return validation results"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Holiday Suggestions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/holidays/suggestions",
+							"host": ["{{base_url}}"],
+							"path": ["holidays", "suggestions"]
+						},
+						"description": "Get holiday suggestions for the current year"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for holiday management and validation"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-set current date variables if not already set",
+					"if (!pm.environment.get('start_date')) {",
+					"    const today = new Date();",
+					"    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);",
+					"    pm.environment.set('start_date', firstDay.toISOString().split('T')[0]);",
+					"}",
+					"",
+					"if (!pm.environment.get('end_date')) {",
+					"    const today = new Date();",
+					"    pm.environment.set('end_date', today.toISOString().split('T')[0]);",
+					"}",
+					"",
+					"// Set default device name if not set",
+					"if (!pm.environment.get('device_name')) {",
+					"    pm.environment.set('device_name', 'Main Office');",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script for all requests",
+					"pm.test('Response time is less than 30 seconds', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(30000);",
+					"});",
+					"",
+					"pm.test('Response has security headers', function () {",
+					"    pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.exist;",
+					"    pm.expect(pm.response.headers.get('X-Powered-By')).to.include('BiometricFlow');",
+					"});",
+					"",
+					"if (pm.response.code === 200) {",
+					"    pm.test('Response is valid JSON', function () {",
+					"        pm.response.to.be.json;",
+					"    });",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "your_api_key_here",
+			"type": "string"
+		},
+		{
+			"key": "device_name",
+			"value": "Main Office",
+			"type": "string"
+		},
+		{
+			"key": "start_date",
+			"value": "2024-01-01",
+			"type": "string"
+		},
+		{
+			"key": "end_date",
+			"value": "2024-01-31",
+			"type": "string"
+		},
+		{
+			"key": "user_name",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "additional_holidays",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

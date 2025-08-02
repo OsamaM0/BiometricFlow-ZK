@@ -1,0 +1,545 @@
+{
+	"info": {
+		"_postman_id": "unified-gateway-api-collection",
+		"name": "🌐 BiometricFlow-ZK Unified Gateway API",
+		"description": "Complete API collection for BiometricFlow-ZK Unified Gateway - aggregates data from all place backends\n\n**Authentication Required:** Most endpoints require Bearer token authentication\n\n**Base URL:** {{gateway_url}} (default: http://localhost:9000)\n\n**API Key:** {{api_key}} - Set in environment variables\n\n**Features:**\n- Multi-place data aggregation\n- Place-specific endpoints\n- Device-specific endpoints\n- Enhanced security\n\n**Version:** 3.0.0",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🏠 Core Gateway Endpoints",
+			"item": [
+				{
+					"name": "Root - Gateway Information",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{gateway_url}}/",
+							"host": ["{{gateway_url}}"],
+							"path": [""]
+						},
+						"description": "Get unified gateway information including all connected places and available endpoints"
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check - Gateway",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/health",
+							"host": ["{{gateway_url}}"],
+							"path": ["health"]
+						},
+						"description": "Check health status of the unified gateway and all connected backends"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Places",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/places",
+							"host": ["{{gateway_url}}"],
+							"path": ["places"]
+						},
+						"description": "Get information about all connected places/locations"
+					},
+					"response": []
+				},
+				{
+					"name": "List Backend Configurations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/backends/list",
+							"host": ["{{gateway_url}}"],
+							"path": ["backends", "list"]
+						},
+						"description": "List all available backend configurations and their details"
+					},
+					"response": []
+				}
+			],
+			"description": "Core endpoints for gateway information and health monitoring"
+		},
+		{
+			"name": "📅 Holiday Management",
+			"item": [
+				{
+					"name": "Get All Holidays",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/holidays",
+							"host": ["{{gateway_url}}"],
+							"path": ["holidays"]
+						},
+						"description": "Get holidays information from all places"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Holidays by Year",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/holidays/{{year}}",
+							"host": ["{{gateway_url}}"],
+							"path": ["holidays", "{{year}}"]
+						},
+						"description": "Get holidays for a specific year from all places"
+					},
+					"response": []
+				}
+			],
+			"description": "Holiday management across all places"
+		},
+		{
+			"name": "🌐 Unified All Places",
+			"item": [
+				{
+					"name": "Get All Devices (Unified)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/devices/all",
+							"host": ["{{gateway_url}}"],
+							"path": ["devices", "all"]
+						},
+						"description": "Get all devices from all places in unified format"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Attendance (Unified)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/attendance/all?start_date={{start_date}}&end_date={{end_date}}&user_name={{user_name}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{gateway_url}}"],
+							"path": ["attendance", "all"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "user_name",
+									"value": "{{user_name}}",
+									"description": "Filter by specific user name (optional)"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get attendance data from all places unified"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users (Unified)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/users/all",
+							"host": ["{{gateway_url}}"],
+							"path": ["users", "all"]
+						},
+						"description": "Get all users from all places unified with deduplication"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Summary (Unified)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/summary/all?start_date={{start_date}}&end_date={{end_date}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{gateway_url}}"],
+							"path": ["summary", "all"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get attendance summary from all places unified"
+					},
+					"response": []
+				}
+			],
+			"description": "Unified endpoints that aggregate data from all places"
+		},
+		{
+			"name": "🏢 Place-Specific Endpoints",
+			"item": [
+				{
+					"name": "Get Place Devices",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/place/{{place_name}}/devices",
+							"host": ["{{gateway_url}}"],
+							"path": ["place", "{{place_name}}", "devices"]
+						},
+						"description": "Get devices from a specific place"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Place Attendance",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/place/{{place_name}}/attendance?start_date={{start_date}}&end_date={{end_date}}&device_name={{device_name}}&user_name={{user_name}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{gateway_url}}"],
+							"path": ["place", "{{place_name}}", "attendance"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "device_name",
+									"value": "{{device_name}}",
+									"description": "Filter by device name (optional)"
+								},
+								{
+									"key": "user_name",
+									"value": "{{user_name}}",
+									"description": "Filter by user name (optional)"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get attendance data from a specific place"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Place Users",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/place/{{place_name}}/users",
+							"host": ["{{gateway_url}}"],
+							"path": ["place", "{{place_name}}", "users"]
+						},
+						"description": "Get users from a specific place"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Place Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/place/{{place_name}}/summary?start_date={{start_date}}&end_date={{end_date}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{gateway_url}}"],
+							"path": ["place", "{{place_name}}", "summary"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get attendance summary from a specific place"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for accessing data from specific places/locations"
+		},
+		{
+			"name": "📱 Device-Specific Endpoints",
+			"item": [
+				{
+					"name": "Get Device Info (Cross-Place)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/device/{{device_name}}/info",
+							"host": ["{{gateway_url}}"],
+							"path": ["device", "{{device_name}}", "info"]
+						},
+						"description": "Get device information from any place"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Device Attendance (Cross-Place)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/device/{{device_name}}/attendance?start_date={{start_date}}&end_date={{end_date}}&user_name={{user_name}}&additional_holidays={{additional_holidays}}",
+							"host": ["{{gateway_url}}"],
+							"path": ["device", "{{device_name}}", "attendance"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "{{start_date}}",
+									"description": "Start date in YYYY-MM-DD format"
+								},
+								{
+									"key": "end_date",
+									"value": "{{end_date}}",
+									"description": "End date in YYYY-MM-DD format"
+								},
+								{
+									"key": "user_name",
+									"value": "{{user_name}}",
+									"description": "Filter by user name (optional)"
+								},
+								{
+									"key": "additional_holidays",
+									"value": "{{additional_holidays}}",
+									"description": "Comma-separated list of additional holidays (optional)"
+								}
+							]
+						},
+						"description": "Get attendance data from a specific device across all places"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for accessing specific devices across all places"
+		},
+		{
+			"name": "🧪 Testing & Examples",
+			"item": [
+				{
+					"name": "Test Authentication",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{gateway_url}}/",
+							"host": ["{{gateway_url}}"],
+							"path": [""]
+						},
+						"description": "Test API key authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Sample Data",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{gateway_url}}/attendance/all?start_date=2024-01-01&end_date=2024-01-07",
+							"host": ["{{gateway_url}}"],
+							"path": ["attendance", "all"],
+							"query": [
+								{
+									"key": "start_date",
+									"value": "2024-01-01"
+								},
+								{
+									"key": "end_date",
+									"value": "2024-01-07"
+								}
+							]
+						},
+						"description": "Get sample attendance data for testing"
+					},
+					"response": []
+				}
+			],
+			"description": "Testing endpoints and examples"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Auto-set current date variables if not already set",
+					"if (!pm.environment.get('start_date')) {",
+					"    const today = new Date();",
+					"    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);",
+					"    pm.environment.set('start_date', firstDay.toISOString().split('T')[0]);",
+					"}",
+					"",
+					"if (!pm.environment.get('end_date')) {",
+					"    const today = new Date();",
+					"    pm.environment.set('end_date', today.toISOString().split('T')[0]);",
+					"}",
+					"",
+					"// Set default place and device names if not set",
+					"if (!pm.environment.get('place_name')) {",
+					"    pm.environment.set('place_name', 'Place_1_BackOffice');",
+					"}",
+					"",
+					"if (!pm.environment.get('device_name')) {",
+					"    pm.environment.set('device_name', 'Main Office');",
+					"}",
+					"",
+					"if (!pm.environment.get('year')) {",
+					"    pm.environment.set('year', new Date().getFullYear().toString());",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script for all requests",
+					"pm.test('Response time is less than 45 seconds', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(45000);",
+					"});",
+					"",
+					"pm.test('Response has security headers', function () {",
+					"    pm.expect(pm.response.headers.get('X-Content-Type-Options')).to.exist;",
+					"    pm.expect(pm.response.headers.get('X-Powered-By')).to.include('BiometricFlow');",
+					"});",
+					"",
+					"if (pm.response.code === 200) {",
+					"    pm.test('Response is valid JSON', function () {",
+					"        pm.response.to.be.json;",
+					"    });",
+					"    ",
+					"    pm.test('Response has success field', function () {",
+					"        const jsonData = pm.response.json();",
+					"        pm.expect(jsonData).to.have.property('success');",
+					"    });",
+					"}",
+					"",
+					"// Log response for debugging",
+					"if (pm.response.code !== 200) {",
+					"    console.log('Response Status:', pm.response.code);",
+					"    console.log('Response Body:', pm.response.text());",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "gateway_url",
+			"value": "http://localhost:9000",
+			"type": "string"
+		},
+		{
+			"key": "api_key",
+			"value": "your_api_key_here",
+			"type": "string"
+		},
+		{
+			"key": "place_name",
+			"value": "Place_1_BackOffice",
+			"type": "string"
+		},
+		{
+			"key": "device_name",
+			"value": "Main Office",
+			"type": "string"
+		},
+		{
+			"key": "start_date",
+			"value": "2024-01-01",
+			"type": "string"
+		},
+		{
+			"key": "end_date",
+			"value": "2024-01-31",
+			"type": "string"
+		},
+		{
+			"key": "user_name",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "additional_holidays",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "year",
+			"value": "2024",
+			"type": "string"
+		}
+	]
+}

@@ -1,4 +1,8 @@
-from fastapi import FastAPI, HTTPException, Query
+"""
+Enhanced Secure Place Backend for BiometricFlow-ZK
+Fingerprint device backend with enhanced security for NGROK deployment
+"""
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -10,6 +14,19 @@ import asyncio
 import uvicorn
 import logging
 from pathlib import Path
+import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Add the core module to the path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'core'))
+from security import (
+    validate_api_key, security_middleware, get_cors_origins, 
+    log_security_event, create_secure_response, create_error_response,
+    generate_secure_session, create_jwt_token
+)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -36,11 +53,10 @@ def get_day_name(weekday_index: int) -> str:
     if CALENDRICAL_AVAILABLE:
         try:
             # python-calendrical provides advanced calendar functionality
-            # For day names, we can use it for more sophisticated operations
             day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
             return day_names[weekday_index]
         except Exception as e:
-            print(f"Error using python-calendrical: {e}")
+            logger.debug(f"Error using python-calendrical: {e}")
     
     # Fallback to standard day names
     day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -62,26 +78,32 @@ def is_working_day(date_obj: datetime, holidays: list) -> bool:
     if CALENDRICAL_AVAILABLE:
         try:
             # Use python-calendrical for more advanced working day calculations
-            # Working days: Sunday, Monday, Tuesday, Wednesday, Thursday (6,0,1,2,3)
-            return weekday in [6, 0, 1, 2, 3]
+            return weekday in [6, 0, 1, 2, 3]  # Working days: Sunday, Monday, Tuesday, Wednesday, Thursday
         except Exception as e:  
-            print(f"Error using python-calendrical for working day calculation: {e}")
+            logger.debug(f"Error using python-calendrical for working day calculation: {e}")
     
     # Fallback: working days are Sunday, Monday, Tuesday, Wednesday, Thursday
     return weekday in [6, 0, 1, 2, 3]
 
+# Enhanced FastAPI app with security
 app = FastAPI(
-    title="Fingerprint Attendance Backend API",
-    description="Backend service for fingerprint device data collection",
-    version="1.0.0"
+    title="🔒 Secure Fingerprint Attendance Backend API",
+    description="Enhanced secure backend service for fingerprint device data collection with NGROK support",
+    version="3.0.0",
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None,
+    openapi_url="/openapi.json" if os.getenv("ENVIRONMENT") != "production" else None
 )
 
-# Enable CORS for cloud frontend access
+# Add security middleware
+app.middleware("http")(security_middleware)
+
+# Secure CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure this properly for production
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -418,20 +440,24 @@ def fetch_attendance_data(start_date: str, end_date: str, device_name: str, addi
 
 # API Endpoints
 @app.get("/", response_model=dict)
-async def root():
+async def root(request: Request, _: bool = Depends(validate_api_key)):
     """Root endpoint with API information"""
-    return {
-        "service": "Fingerprint Attendance Backend",
-        "version": "1.0.0",
+    client_ip = request.client.host if request.client else "unknown"
+    log_security_event("API_ACCESS", f"Root endpoint accessed", client_ip)
+    
+    return create_secure_response({
+        "service": "Secure Fingerprint Attendance Backend",
+        "version": "2.0.0",
         "backend_name": config.backend_name,
         "total_devices": len(config.devices),
         "devices": list(config.devices.keys()),
-        "status": "running"
-    }
+        "status": "running",
+        "security_enabled": True
+    })
 
 @app.get("/health", response_model=dict)
 async def health_check():
-    """Health check endpoint - Fast version for demo"""
+    """Health check endpoint - Fast version for demo (no auth required for monitoring)"""
     device_statuses = {}
     
     for device_name in config.devices:
@@ -474,7 +500,7 @@ async def health_check_full():
     }
 
 @app.get("/devices", response_model=DeviceListResponse)
-async def get_all_devices():
+async def get_all_devices(request: Request, _: bool = Depends(validate_api_key)):
     """Get list of all configured devices with their status"""
     device_list = []
     
@@ -589,11 +615,13 @@ async def get_device_info(device_name: str = Query(..., description="Name of the
 
 @app.get("/attendance", response_model=AttendanceResponse)
 async def get_attendance_data(
+    request: Request,
     start_date: str = Query(..., description="Start date in YYYY-MM-DD format"),
     end_date: str = Query(..., description="End date in YYYY-MM-DD format"),
     device_name: str = Query(..., description="Name of the fingerprint device"),
     user_name: Optional[str] = Query(None, description="Filter by specific user name"),
-    additional_holidays: Optional[str] = Query(None, description="Comma-separated list of additional holidays in YYYY-MM-DD format")
+    additional_holidays: Optional[str] = Query(None, description="Comma-separated list of additional holidays in YYYY-MM-DD format"),
+    _: bool = Depends(validate_api_key)
 ):
     """Get attendance data for specified date range and device"""
     try:
@@ -700,7 +728,11 @@ async def get_all_attendance_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/users", response_model=dict)
-async def get_users(device_name: str = Query(..., description="Name of the fingerprint device")):
+async def get_users(
+    request: Request,
+    device_name: str = Query(..., description="Name of the fingerprint device"),
+    _: bool = Depends(validate_api_key)
+):
     """Get list of users from a specific device"""
     if not ZK_AVAILABLE:
         raise HTTPException(status_code=500, detail="ZK library not available")
