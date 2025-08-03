@@ -14,6 +14,22 @@ echo 📁 Project Directory: %PROJECT_DIR%
 echo 🏬 Starting Place 2 Backend (Show Room)...
 echo.
 
+REM === Load .env from root project directory ===
+if exist "%PROJECT_DIR%\.env" (
+    echo 🔄 Loading environment variables from .env...
+    for /f "usebackq tokens=* delims=" %%a in ("%PROJECT_DIR%\.env") do (
+        set "line=%%a"
+        REM Skip empty lines and comments
+        if not "!line!"=="" if "!line:~0,1!" neq "#" (
+            for /f "tokens=1,* delims==" %%b in ("!line!") do (
+                set "%%b=%%c"
+            )
+        )
+    )
+) else (
+    echo ⚠️  .env file not found in %PROJECT_DIR%
+)
+
 REM Check virtual environment
 if not exist ".venv\Scripts\python.exe" (
     echo ❌ Virtual environment not found
@@ -36,7 +52,7 @@ if not exist "config\devices_config_place2.json" (
     exit /b 1
 )
 
-REM Set environment variables for Place 2
+REM Set additional environment variables
 set BACKEND_NAME=Place_2_ShowRoom
 set BACKEND_PORT=8001
 set BACKEND_LOCATION=Show Room Complex

@@ -209,6 +209,7 @@ __marimo__/
 *.local
 
 # Local environment variables
+.env
 .env.local
 
 # Local configuration files for specific tools

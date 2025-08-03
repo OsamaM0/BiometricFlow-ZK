@@ -1,7 +1,7 @@
 # BiometricFlow-ZK Quick Setup Script
 # This script helps you quickly generate API keys and test endpoint access
 
-Write-Host "🚀 BiometricFlow-ZK Security Setup" -ForegroundColor Green
+Write-Host "BiometricFlow-ZK Security Setup" -ForegroundColor Green
 Write-Host "=" * 40
 
 # Function to generate secure API key
@@ -14,15 +14,15 @@ function Generate-ApiKey {
 # Check if .env file exists
 $envFile = ".\.env"
 if (Test-Path $envFile) {
-    Write-Host "⚠️  .env file already exists!" -ForegroundColor Yellow
+    Write-Host ".env file already exists!" -ForegroundColor Yellow
     $overwrite = Read-Host "Do you want to overwrite it? (y/n)"
     if ($overwrite -ne "y") {
-        Write-Host "❌ Exiting without changes" -ForegroundColor Red
+        Write-Host "Exiting without changes" -ForegroundColor Red
         exit
     }
 }
 
-Write-Host "🔑 Generating secure API keys..." -ForegroundColor Cyan
+Write-Host "Generating secure API keys..." -ForegroundColor Cyan
 
 # Generate API keys
 $mainApiKey = Generate-ApiKey
@@ -30,7 +30,7 @@ $backendApiKey = Generate-ApiKey
 $frontendApiKey = Generate-ApiKey
 $jwtSecret = Generate-ApiKey
 
-Write-Host "✅ Keys generated successfully!" -ForegroundColor Green
+Write-Host "Keys generated successfully!" -ForegroundColor Green
 
 # Create .env file content
 $envContent = @"
@@ -126,15 +126,15 @@ DEVICES_CONFIG_FILE=config/devices_config.json
 # Write .env file
 try {
     $envContent | Out-File -FilePath $envFile -Encoding UTF8
-    Write-Host "📄 .env file created successfully!" -ForegroundColor Green
+    Write-Host ".env file created successfully!" -ForegroundColor Green
 }
 catch {
-    Write-Host "❌ Failed to create .env file: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Failed to create .env file: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
-Write-Host "🔐 Your API Keys:" -ForegroundColor Yellow
+Write-Host "Your API Keys:" -ForegroundColor Yellow
 Write-Host "=" * 30
 Write-Host "Main API Key:     $($mainApiKey.Substring(0,8))...$($mainApiKey.Substring($mainApiKey.Length-4))" -ForegroundColor White
 Write-Host "Backend API Key:  $($backendApiKey.Substring(0,8))...$($backendApiKey.Substring($backendApiKey.Length-4))" -ForegroundColor White
@@ -142,17 +142,17 @@ Write-Host "Frontend API Key: $($frontendApiKey.Substring(0,8))...$($frontendApi
 Write-Host "JWT Secret:       $($jwtSecret.Substring(0,8))...$($jwtSecret.Substring($jwtSecret.Length-4))" -ForegroundColor White
 
 Write-Host ""
-Write-Host "🚀 Next Steps:" -ForegroundColor Green
+Write-Host "Next Steps:" -ForegroundColor Green
 Write-Host "1. Start the backend:  python src/biometric_flow/backend/place_backend.py" -ForegroundColor White
 Write-Host "2. Test API access:    python test_api_access.py" -ForegroundColor White
 Write-Host "3. Start frontend:     streamlit run src/biometric_flow/frontend/app.py" -ForegroundColor White
 
 Write-Host ""
-Write-Host "🔧 Testing API Access:" -ForegroundColor Cyan
+Write-Host "Testing API Access:" -ForegroundColor Cyan
 $testNow = Read-Host "Do you want to test API access now? (y/n)"
 
 if ($testNow -eq "y") {
-    Write-Host "🔍 Testing API endpoints..." -ForegroundColor Cyan
+    Write-Host "Testing API endpoints..." -ForegroundColor Cyan
     
     # Set environment variable for this session
     $env:MAIN_API_KEY = $mainApiKey
@@ -160,21 +160,21 @@ if ($testNow -eq "y") {
     # Test if Python is available
     try {
         $pythonVersion = python --version 2>&1
-        Write-Host "✅ Python found: $pythonVersion" -ForegroundColor Green
+        Write-Host "Python found: $pythonVersion" -ForegroundColor Green
         
         # Run the test script
-        Write-Host "📡 Running API tests..." -ForegroundColor Cyan
+        Write-Host "Running API tests..." -ForegroundColor Cyan
         python test_api_access.py
     }
     catch {
-        Write-Host "❌ Python not found or not in PATH" -ForegroundColor Red
-        Write-Host "💡 Please install Python or add it to your PATH" -ForegroundColor Yellow
+        Write-Host "Python not found or not in PATH" -ForegroundColor Red
+        Write-Host "Please install Python or add it to your PATH" -ForegroundColor Yellow
     }
 }
 
 Write-Host ""
-Write-Host "✨ Setup complete! Your BiometricFlow-ZK system is now configured with secure API access." -ForegroundColor Green
+Write-Host "Setup complete! Your BiometricFlow-ZK system is now configured with secure API access." -ForegroundColor Green
 Write-Host ""
-Write-Host "📚 For more details, see:" -ForegroundColor Yellow
+Write-Host "For more details, see:" -ForegroundColor Yellow
 Write-Host "   - API_ACCESS_GUIDE.md" -ForegroundColor White
 Write-Host "   - docs/security/NGROK_SECURITY_GUIDE.md" -ForegroundColor White

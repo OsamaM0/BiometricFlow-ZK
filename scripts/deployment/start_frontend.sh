@@ -26,6 +26,16 @@ echo
 # Change to project directory
 cd "$PROJECT_DIR"
 
+# === Load .env from root project directory ===
+if [ -f "$PROJECT_DIR/.env" ]; then
+    echo -e "${GREEN}🔄 Loading environment variables from .env...${NC}"
+    set -a
+    source "$PROJECT_DIR/.env"
+    set +a
+else
+    echo -e "${NC}⚠️  .env file not found in $PROJECT_DIR${NC}"
+fi
+
 # Check virtual environment
 if [ ! -f "$VENV_DIR/bin/activate" ]; then
     echo -e "${RED}❌ Virtual environment not found${NC}"
@@ -49,7 +59,7 @@ if ! command -v streamlit &> /dev/null; then
     exit 1
 fi
 
-# Set environment variables for Frontend
+# Set additional environment variables for Frontend
 export STREAMLIT_SERVER_PORT="8501"
 export STREAMLIT_SERVER_ADDRESS="0.0.0.0"
 export PYTHONPATH="$PROJECT_DIR/src"

@@ -14,6 +14,22 @@ echo 📁 Project Directory: %PROJECT_DIR%
 echo 🌐 Starting Unified Gateway Backend...
 echo.
 
+REM === Load .env from root project directory ===
+if exist "%PROJECT_DIR%\.env" (
+    echo 🔄 Loading environment variables from .env...
+    for /f "usebackq tokens=* delims=" %%a in ("%PROJECT_DIR%\.env") do (
+        set "line=%%a"
+        REM Skip empty lines and comments
+        if not "!line!"=="" if "!line:~0,1!" neq "#" (
+            for /f "tokens=1,* delims==" %%b in ("!line!") do (
+                set "%%b=%%c"
+            )
+        )
+    )
+) else (
+    echo ⚠️  .env file not found in %PROJECT_DIR%
+)
+
 REM Check virtual environment
 if not exist ".venv\Scripts\python.exe" (
     echo ❌ Virtual environment not found
@@ -36,7 +52,7 @@ if not exist "config\unified_backends_config.json" (
     exit /b 1
 )
 
-REM Set environment variables for Unified Gateway
+REM Set additional environment variables
 set GATEWAY_PORT=9000
 set FRONTEND_BACKEND_PORT=9001
 set ALLOWED_ORIGINS=http://localhost:8501,http://localhost:9001

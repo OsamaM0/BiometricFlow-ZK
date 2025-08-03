@@ -20,6 +20,24 @@ set "PROJECT_DIR=%CD%"
 
 echo 📁 Working from: %PROJECT_DIR%
 echo.
+
+REM === Load .env from root project directory ===
+if exist "%PROJECT_DIR%\.env" (
+    echo 🔄 Loading environment variables from .env...
+    for /f "usebackq tokens=* delims=" %%a in ("%PROJECT_DIR%\.env") do (
+        set "line=%%a"
+        REM Skip empty lines and comments
+        if not "!line!"=="" if "!line:~0,1!" neq "#" (
+            for /f "tokens=1,* delims==" %%b in ("!line!") do (
+                set "%%b=%%c"
+            )
+        )
+    )
+) else (
+    echo ⚠️  .env file not found in %PROJECT_DIR%
+)
+echo.
+
 echo This will start all components of the system:
 echo.
 echo 1. Place 1 Backend (Port 8000) - Main Office
@@ -54,27 +72,27 @@ echo.
 
 REM Start Place 1 Backend
 echo Starting Place 1 Backend...
-start "Place 1 Backend" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_place1_backend_enhanced.bat"
+start "Place 1 Backend" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_place1_backend.bat"
 timeout /t 3 >nul
 
 REM Start Place 2 Backend  
 echo Starting Place 2 Backend...
-start "Place 2 Backend" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_place2_backend_enhanced.bat"
+start "Place 2 Backend" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_place2_backend.bat"
 timeout /t 3 >nul
 
 REM Start Place 3 Backend
 echo Starting Place 3 Backend...
-start "Place 3 Backend" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_place3_backend_enhanced.bat"
+start "Place 3 Backend" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_place3_backend.bat"
 timeout /t 3 >nul
 
 REM Start Unified Gateway
 echo Starting Unified Gateway...
-start "Unified Gateway" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_unified_backend_enhanced.bat"
+start "Unified Gateway" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_unified_backend.bat"
 timeout /t 5 >nul
 
 REM Start Frontend
 echo Starting Frontend...
-start "Frontend UI" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_frontend_enhanced.bat"
+start "Frontend UI" cmd /k "cd /d "%PROJECT_DIR%" && scripts\deployment\start_frontend.bat"
 
 echo.
 echo ✅ All services started! Access the system at:

@@ -26,6 +26,16 @@ echo
 # Change to project directory
 cd "$PROJECT_DIR"
 
+# === Load .env from root project directory ===
+if [ -f "$PROJECT_DIR/.env" ]; then
+    echo -e "${GREEN}🔄 Loading environment variables from .env...${NC}"
+    set -a
+    source "$PROJECT_DIR/.env"
+    set +a
+else
+    echo -e "${NC}⚠️  .env file not found in $PROJECT_DIR${NC}"
+fi
+
 # Check virtual environment
 if [ ! -f "$VENV_DIR/bin/activate" ]; then
     echo -e "${RED}❌ Virtual environment not found${NC}"
@@ -48,7 +58,7 @@ fi
 # Activate virtual environment
 source "$VENV_DIR/bin/activate"
 
-# Set environment variables for Place 2
+# Set additional environment variables for Place 2
 export BACKEND_NAME="Place_2_ShowRoom"
 export BACKEND_PORT="8001"
 export BACKEND_LOCATION="Show Room Complex"

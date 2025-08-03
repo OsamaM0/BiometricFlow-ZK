@@ -14,6 +14,22 @@ echo 📁 Project Directory: %PROJECT_DIR%
 echo 🏢 Starting Place 1 Backend (Main Office)...
 echo.
 
+REM === Load .env from root project directory ===
+if exist "%PROJECT_DIR%\.env" (
+    echo 🔄 Loading environment variables from .env...
+    for /f "usebackq tokens=* delims=" %%a in ("%PROJECT_DIR%\.env") do (
+        set "line=%%a"
+        REM Skip empty lines and comments
+        if not "!line!"=="" if "!line:~0,1!" neq "#" (
+            for /f "tokens=1,* delims==" %%b in ("!line!") do (
+                set "%%b=%%c"
+            )
+        )
+    )
+) else (
+    echo ⚠️  .env file not found in %PROJECT_DIR%
+)
+
 REM Check virtual environment
 if not exist ".venv\Scripts\python.exe" (
     echo ❌ Virtual environment not found
@@ -36,10 +52,10 @@ if not exist "config\devices_config_place1.json" (
     exit /b 1
 )
 
-REM Set environment variables for Place 1
+REM Set additional environment variables
 set BACKEND_NAME=Place_1_BackOffice
 set BACKEND_PORT=8000
-set BACKEND_LOCATION=Main Office Building
+set BACKEND_LOCATION=Back Office Building
 set DEVICES_CONFIG_FILE=config\devices_config_place1.json
 set PYTHONPATH=%PROJECT_DIR%\src
 

@@ -178,21 +178,21 @@ start_all_services() {
     echo
     
     # Start backends first
-    start_service "place1_backend" "start_place1_backend_enhanced.sh" 8000
+    start_service "place1_backend" "start_place1_backend.sh" 8000
     sleep 3
     
-    start_service "place2_backend" "start_place2_backend_enhanced.sh" 8001
+    start_service "place2_backend" "start_place2_backend.sh" 8001
     sleep 3
     
-    start_service "place3_backend" "start_place3_backend_enhanced.sh" 8002
+    start_service "place3_backend" "start_place3_backend.sh" 8002
     sleep 3
     
     # Start unified gateway
-    start_service "unified_gateway" "start_unified_backend_enhanced.sh" 9000
+    start_service "unified_gateway" "start_unified_backend.sh" 9000
     sleep 5
     
     # Start frontend
-    start_service "frontend" "start_frontend_enhanced.sh" 8501
+    start_service "frontend" "start_frontend.sh" 8501
     
     echo
     print_success "All services started!"
@@ -272,6 +272,16 @@ trap 'echo ""; print_status "Interrupted by user"; stop_services; exit 0' INT
 
 # Change to project directory
 cd "$PROJECT_DIR"
+
+# === Load .env from root project directory ===
+if [ -f "$PROJECT_DIR/.env" ]; then
+    print_status "🔄 Loading environment variables from .env..."
+    set -a
+    source "$PROJECT_DIR/.env"
+    set +a
+else
+    print_warning "⚠️  .env file not found in $PROJECT_DIR"
+fi
 
 # Check prerequisites
 check_venv

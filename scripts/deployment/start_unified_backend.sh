@@ -26,6 +26,16 @@ echo
 # Change to project directory
 cd "$PROJECT_DIR"
 
+# === Load .env from root project directory ===
+if [ -f "$PROJECT_DIR/.env" ]; then
+    echo -e "${GREEN}🔄 Loading environment variables from .env...${NC}"
+    set -a
+    source "$PROJECT_DIR/.env"
+    set +a
+else
+    echo -e "${NC}⚠️  .env file not found in $PROJECT_DIR${NC}"
+fi
+
 # Check virtual environment
 if [ ! -f "$VENV_DIR/bin/activate" ]; then
     echo -e "${RED}❌ Virtual environment not found${NC}"
@@ -48,7 +58,7 @@ fi
 # Activate virtual environment
 source "$VENV_DIR/bin/activate"
 
-# Set environment variables for Unified Gateway
+# Set additional environment variables for Unified Gateway
 export GATEWAY_PORT="9000"
 export FRONTEND_BACKEND_PORT="9001"
 export ALLOWED_ORIGINS="http://localhost:8501,http://localhost:9001"
