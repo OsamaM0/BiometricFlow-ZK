@@ -1,0 +1,81 @@
+{
+	"id": "biometricflow-zk-environment",
+	"name": "BiometricFlow-ZK Environment",
+	"values": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"description": "Place Backend Base URL",
+			"enabled": true
+		},
+		{
+			"key": "gateway_url",
+			"value": "http://localhost:9000",
+			"description": "Unified Gateway Base URL",
+			"enabled": true
+		},
+		{
+			"key": "api_key",
+			"value": "your_secure_api_key_here",
+			"description": "API Key for authentication (generate using setup_security.ps1)",
+			"enabled": true
+		},
+		{
+			"key": "device_name",
+			"value": "Main Office",
+			"description": "Default device name for testing",
+			"enabled": true
+		},
+		{
+			"key": "place_name",
+			"value": "Place_1_BackOffice",
+			"description": "Default place name for testing",
+			"enabled": true
+		},
+		{
+			"key": "start_date",
+			"value": "2024-01-01",
+			"description": "Default start date for date range queries",
+			"enabled": true
+		},
+		{
+			"key": "end_date",
+			"value": "2024-01-31",
+			"description": "Default end date for date range queries",
+			"enabled": true
+		},
+		{
+			"key": "user_name",
+			"value": "",
+			"description": "Optional user name filter",
+			"enabled": true
+		},
+		{
+			"key": "additional_holidays",
+			"value": "",
+			"description": "Optional additional holidays (comma-separated)",
+			"enabled": true
+		},
+		{
+			"key": "year",
+			"value": "2024",
+			"description": "Year for holiday queries",
+			"enabled": true
+		},
+		{
+			"key": "ngrok_backend_url",
+			"value": "",
+			"description": "NGROK URL for backend (if using NGROK)",
+			"enabled": false
+		},
+		{
+			"key": "ngrok_gateway_url",
+			"value": "",
+			"description": "NGROK URL for gateway (if using NGROK)",
+			"enabled": false
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2024-01-01T00:00:00.000Z",
+	"_postman_exported_using": "Postman/10.0.0"
+}

@@ -1,3 +1,7 @@
+"""
+Enhanced Secure Frontend for BiometricFlow-ZK
+Streamlit web application with enhanced security for NGROK deployment
+"""
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -11,22 +15,39 @@ import io
 import numpy as np
 import requests
 import json
+import os
+import secrets
+import hashlib
 from typing import List, Dict, Any, Optional
 import asyncio
 import aiohttp
+from dotenv import load_dotenv
 
-# Set page config
+# Load environment variables from .env file
+load_dotenv()
+
+# Enhanced security configuration
+SECURITY_CONFIG = {
+    "api_key": os.getenv("FRONTEND_API_KEY", secrets.token_urlsafe(32)),
+    "session_timeout": int(os.getenv("SESSION_TIMEOUT", "3600")),  # 1 hour
+    "max_request_size": int(os.getenv("MAX_REQUEST_SIZE", "5242880")),  # 5MB
+    "allowed_backend_urls": os.getenv("ALLOWED_BACKEND_URLS", "http://localhost:9000,https://localhost:9000").split(",")
+}
+
+# Set page config with enhanced security
 st.set_page_config(
-    page_title="Multi-Device Attendance Management System",
-    page_icon="📱",
+    page_title="🔒 Secure Multi-Device Attendance Management System",
+    page_icon="�",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Backend Configuration - Updated for Unified Gateway
+# Enhanced Backend Configuration with security
 BACKEND_CONFIG = {
-    "url": "http://localhost:9000",  # Unified Gateway URL
-    "name": "Unified Gateway Backend"
+    "url": os.getenv("BACKEND_URL", "http://localhost:9000"),  # Unified Gateway URL
+    "name": "Secure Unified Gateway Backend",
+    "api_key": SECURITY_CONFIG["api_key"],
+    "timeout": int(os.getenv("REQUEST_TIMEOUT", "30"))
 }
 
 # Enhanced table styling functions
@@ -191,150 +212,171 @@ def style_trends_table(df):
     return styled_df
 
 class BackendClient:
-    """Client to interact with unified multi-place backend API"""
+    """Enhanced secure client to interact with unified multi-place backend API"""
     
     def __init__(self, backend_url: str, timeout: int = 30):
         self.base_url = backend_url.rstrip('/')
         self.timeout = timeout
+        self.api_key = SECURITY_CONFIG["api_key"]
+        self.session = requests.Session()
+        
+        # Set default headers for security
+        self.session.headers.update({
+            "User-Agent": "BiometricFlow-Frontend/3.0",
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "X-Frontend-Request": "true"
+        })
+    
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
+        """Make secure HTTP request with error handling"""
+        url = f"{self.base_url}{endpoint}"
+        
+        # Validate URL against allowed backends
+        if self.base_url not in SECURITY_CONFIG["allowed_backend_urls"]:
+            return {"success": False, "error": "Backend URL not in allowed list"}
+        
+        try:
+            response = self.session.request(method, url, timeout=self.timeout, **kwargs)
+            
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 401:
+                return {"success": False, "error": "Authentication failed - check API key"}
+            elif response.status_code == 403:
+                return {"success": False, "error": "Access denied"}
+            elif response.status_code == 429:
+                return {"success": False, "error": "Rate limit exceeded - please wait"}
+            else:
+                return {"success": False, "error": f"HTTP {response.status_code}: {response.text[:100]}"}
+                
+        except requests.exceptions.Timeout:
+            return {"success": False, "error": "Request timeout - backend may be overloaded"}
+        except requests.exceptions.ConnectionError:
+            return {"success": False, "error": "Connection failed - backend may be down"}
+        except requests.exceptions.RequestException as e:
+            return {"success": False, "error": f"Request failed: {str(e)[:100]}"}
+        except Exception as e:
+            return {"success": False, "error": f"Unexpected error: {str(e)[:100]}"}
     
     def health_check(self) -> Dict[str, Any]:
         """Check if unified gateway is healthy"""
-        try:
-            response = requests.get(f"{self.base_url}/health", timeout=5)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"status": "unhealthy", "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"status": "unreachable", "error": str(e)}
+        return self._make_request("GET", "/health")
     
     def get_places(self) -> Dict[str, Any]:
         """Get list of all places"""
-        try:
-            response = requests.get(f"{self.base_url}/places", timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        return self._make_request("GET", "/places")
     
     def get_devices(self) -> Dict[str, Any]:
         """Get list of all devices from all places"""
-        try:
-            response = requests.get(f"{self.base_url}/devices/all", timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        return self._make_request("GET", "/devices/all")
     
     def get_place_devices(self, place_name: str) -> Dict[str, Any]:
         """Get devices from a specific place"""
-        try:
-            response = requests.get(f"{self.base_url}/place/{place_name}/devices", timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        return self._make_request("GET", f"/place/{place_name}/devices")
     
     def get_device_info(self, device_name: str) -> Dict[str, Any]:
         """Get information for a specific device"""
-        try:
-            response = requests.get(f"{self.base_url}/device/{device_name}/info", timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"error": str(e)}
+        return self._make_request("GET", f"/device/{device_name}/info")
     
     def get_attendance_data(self, device_name: str, start_date: str, end_date: str, user_name: str = None, additional_holidays: str = None) -> Dict[str, Any]:
         """Get attendance data from specific device"""
-        try:
-            params = {
-                "start_date": start_date, 
-                "end_date": end_date
-            }
-            if user_name:
-                params["user_name"] = user_name
-            if additional_holidays:
-                params["additional_holidays"] = additional_holidays
-            
-            response = requests.get(f"{self.base_url}/device/{device_name}/attendance", params=params, timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        params = {
+            "start_date": start_date, 
+            "end_date": end_date
+        }
+        if user_name:
+            params["user_name"] = user_name
+        if additional_holidays:
+            params["additional_holidays"] = additional_holidays
+        
+        return self._make_request("GET", f"/device/{device_name}/attendance", params=params)
     
     def get_all_attendance_data(self, start_date: str, end_date: str, user_name: str = None, additional_holidays: str = None) -> Dict[str, Any]:
         """Get attendance data from all places"""
-        try:
-            params = {
-                "start_date": start_date, 
-                "end_date": end_date
-            }
-            if user_name:
-                params["user_name"] = user_name
-            if additional_holidays:
-                params["additional_holidays"] = additional_holidays
-            
-            response = requests.get(f"{self.base_url}/attendance/all", params=params, timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        params = {
+            "start_date": start_date, 
+            "end_date": end_date
+        }
+        if user_name:
+            params["user_name"] = user_name
+        if additional_holidays:
+            params["additional_holidays"] = additional_holidays
+        
+        return self._make_request("GET", "/attendance/all", params=params)
     
     def get_place_attendance_data(self, place_name: str, start_date: str, end_date: str, device_name: str = None, user_name: str = None, additional_holidays: str = None) -> Dict[str, Any]:
         """Get attendance data from specific place"""
-        try:
-            params = {
-                "start_date": start_date, 
-                "end_date": end_date
-            }
-            if device_name:
-                params["device_name"] = device_name
-            if user_name:
-                params["user_name"] = user_name
-            if additional_holidays:
-                params["additional_holidays"] = additional_holidays
-            
-            response = requests.get(f"{self.base_url}/place/{place_name}/attendance", params=params, timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        params = {
+            "start_date": start_date, 
+            "end_date": end_date
+        }
+        if device_name:
+            params["device_name"] = device_name
+        if user_name:
+            params["user_name"] = user_name
+        if additional_holidays:
+            params["additional_holidays"] = additional_holidays
+        
+        return self._make_request("GET", f"/place/{place_name}/attendance", params=params)
     
     def get_all_users(self) -> Dict[str, Any]:
         """Get all users from all places"""
-        try:
-            response = requests.get(f"{self.base_url}/users/all", timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        return self._make_request("GET", "/users/all")
     
     def get_place_users(self, place_name: str) -> Dict[str, Any]:
         """Get users from specific place"""
-        try:
-            response = requests.get(f"{self.base_url}/place/{place_name}/users", timeout=self.timeout)
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {"success": False, "error": f"HTTP {response.status_code}"}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+        return self._make_request("GET", f"/place/{place_name}/users")
+    
+    def get_all_attendance_summary(self, start_date: str, end_date: str, additional_holidays: str = None) -> Dict[str, Any]:
+        """Get attendance summary from all places"""
+        params = {
+            "start_date": start_date,
+            "end_date": end_date
+        }
+        if additional_holidays:
+            params["additional_holidays"] = additional_holidays
+        
+        return self._make_request("GET", "/summary/all", params=params)
+    
+    def get_place_summary(self, place_name: str, start_date: str, end_date: str, additional_holidays: str = None) -> Dict[str, Any]:
+        """Get summary for specific place"""
+        params = {
+            "start_date": start_date,
+            "end_date": end_date
+        }
+        if additional_holidays:
+            params["additional_holidays"] = additional_holidays
+        
+        return self._make_request("GET", f"/place/{place_name}/summary", params=params)
+    
+    def get_holidays(self) -> Dict[str, Any]:
+        """Get holidays list"""
+        return self._make_request("GET", "/holidays")
+    
+    def validate_custom_holidays(self, holiday_dates: List[str]) -> Dict[str, Any]:
+        """Validate custom holiday dates"""
+        valid_dates = []
+        invalid_dates = []
+        
+        for date_str in holiday_dates:
+            try:
+                # Validate date format
+                datetime.strptime(date_str, '%Y-%m-%d')
+                valid_dates.append(date_str)
+            except ValueError:
+                invalid_dates.append(date_str)
+        
+        return {
+            "success": True,
+            "valid_dates": valid_dates,
+            "invalid_dates": invalid_dates,
+            "message": f"Validated {len(valid_dates)} valid dates, {len(invalid_dates)} invalid dates"
+        }
+    
+    def get_holiday_suggestions(self) -> Dict[str, Any]:
+        """Get holiday suggestions"""
+        return self._make_request("GET", "/holidays/suggestions")
     
     def get_all_attendance_summary(self, start_date: str, end_date: str, additional_holidays: str = None) -> Dict[str, Any]:
         """Get attendance summary from all places"""

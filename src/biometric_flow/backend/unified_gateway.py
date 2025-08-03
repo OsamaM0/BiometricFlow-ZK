@@ -15,22 +15,40 @@ import os
 import uvicorn
 from pathlib import Path
 import logging
+import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Add the core module to the path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'core'))
+from security import (
+    validate_api_key, security_middleware, get_cors_origins, 
+    log_security_event, create_secure_response, create_error_response,
+    generate_secure_session, create_jwt_token, verify_jwt_token
+)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Unified Fingerprint Attendance Backend Gateway",
-    description="Unified API gateway that aggregates data from all place backends with enhanced security",
-    version="2.1.0"
+    title="🔒 Secure Unified Fingerprint Attendance Backend Gateway",
+    description="Enhanced secure unified API gateway that aggregates data from all place backends with powerful security",
+    version="3.0.0",
+    docs_url="/docs" if os.getenv("ENVIRONMENT") != "production" else None,
+    redoc_url="/redoc" if os.getenv("ENVIRONMENT") != "production" else None,
+    openapi_url="/openapi.json" if os.getenv("ENVIRONMENT") != "production" else None
 )
 
-# CORS - Updated for security
-origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8501,http://localhost:9001").split(",")
+# Add security middleware
+app.middleware("http")(security_middleware)
+
+# Secure CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
@@ -134,36 +152,107 @@ class PlaceSummary(BaseModel):
 
 # Helper Functions
 async def call_backend(session: aiohttp.ClientSession, backend_name: str, endpoint: str, params: Dict = None) -> Dict:
-    """Call a specific backend endpoint"""
+    """Enhanced secure backend communication with improved authentication"""
     if backend_name not in config.backends:
+        log_security_event("BACKEND_NOT_FOUND", f"Backend '{backend_name}' not found", "gateway")
         raise HTTPException(status_code=404, detail=f"Backend '{backend_name}' not found")
     
     backend_config = config.backends[backend_name]
     url = f"{backend_config['url']}{endpoint}"
     
+    # Enhanced authentication headers
+    headers = {
+        "User-Agent": "BiometricFlow-Gateway/3.0",
+        "X-Gateway-Request": "true",
+        "Content-Type": "application/json"
+    }
+    
+    # Multiple authentication methods
+    backend_api_key = os.getenv("BACKEND_API_KEY")
+    main_api_key = os.getenv("MAIN_API_KEY")
+    
+    if backend_api_key:
+        headers["Authorization"] = f"Bearer {backend_api_key}"
+    elif main_api_key:
+        headers["Authorization"] = f"Bearer {main_api_key}"
+    else:
+        logger.warning("No API key configured for backend communication")
+    
+    # Add JWT token for enhanced security if available
     try:
-        timeout = aiohttp.ClientTimeout(total=backend_config.get('timeout', 30))
-        async with session.get(url, params=params, timeout=timeout) as response:
+        jwt_payload = {"gateway": True, "backend": backend_name}
+        jwt_token = create_jwt_token(jwt_payload)
+        headers["X-Gateway-Token"] = jwt_token
+    except Exception as e:
+        logger.debug(f"JWT token creation failed: {e}")
+    
+    try:
+        timeout = aiohttp.ClientTimeout(total=backend_config.get('timeout', 15))  # Reduced timeout for NGROK
+        async with session.get(url, params=params, headers=headers, timeout=timeout, ssl=False) as response:
             if response.status == 200:
                 data = await response.json()
-                # Add backend info to response
+                # Add backend metadata to response
                 if isinstance(data, dict):
                     data['_backend_name'] = backend_name
                     data['_backend_url'] = backend_config['url']
                     data['_place_location'] = backend_config.get('location', 'Unknown')
+                    data['_response_time'] = response.headers.get('X-Process-Time', 'unknown')
                 return data
-            else:
+            elif response.status == 401:
+                log_security_event("BACKEND_AUTH_FAILED", f"Authentication failed for backend {backend_name}", "gateway")
                 return {
                     "success": False,
-                    "error": f"Backend {backend_name} returned status {response.status}",
+                    "error": f"Authentication failed for backend {backend_name}",
+                    "error_code": "AUTH_FAILED",
                     "_backend_name": backend_name,
                     "_backend_url": backend_config['url'],
                     "_place_location": backend_config.get('location', 'Unknown')
                 }
-    except Exception as e:
+            elif response.status == 403:
+                log_security_event("BACKEND_ACCESS_DENIED", f"Access denied for backend {backend_name}", "gateway")
+                return {
+                    "success": False,
+                    "error": f"Access denied for backend {backend_name}",
+                    "error_code": "ACCESS_DENIED",
+                    "_backend_name": backend_name,
+                    "_backend_url": backend_config['url'],
+                    "_place_location": backend_config.get('location', 'Unknown')
+                }
+            elif response.status >= 500:
+                log_security_event("BACKEND_SERVER_ERROR", f"Backend {backend_name} server error: {response.status}", "gateway")
+                return {
+                    "success": False,
+                    "error": f"Backend {backend_name} server error",
+                    "error_code": "SERVER_ERROR",
+                    "_backend_name": backend_name,
+                    "_backend_url": backend_config['url'],
+                    "_place_location": backend_config.get('location', 'Unknown')
+                }
+            else:
+                return {
+                    "success": False,
+                    "error": f"Backend {backend_name} returned status {response.status}",
+                    "error_code": "HTTP_ERROR",
+                    "_backend_name": backend_name,
+                    "_backend_url": backend_config['url'],
+                    "_place_location": backend_config.get('location', 'Unknown')
+                }
+    except asyncio.TimeoutError:
+        log_security_event("BACKEND_TIMEOUT", f"Timeout calling backend {backend_name}", "gateway")
         return {
             "success": False,
-            "error": str(e),
+            "error": f"Backend {backend_name} timeout",
+            "error_code": "TIMEOUT",
+            "_backend_name": backend_name,
+            "_backend_url": backend_config['url'],
+            "_place_location": backend_config.get('location', 'Unknown')
+        }
+    except Exception as e:
+        log_security_event("BACKEND_ERROR", f"Error calling backend {backend_name}: {str(e)}", "gateway")
+        return {
+            "success": False,
+            "error": f"Backend communication error: {str(e)}",
+            "error_code": "CONNECTION_ERROR",
             "_backend_name": backend_name,
             "_backend_url": backend_config['url'],
             "_place_location": backend_config.get('location', 'Unknown')
@@ -195,8 +284,11 @@ async def call_specific_place_backend(backend_name: str, endpoint: str, params: 
 # Unified API Endpoints
 
 @app.get("/", response_model=dict)
-async def root():
+async def root(request: Request, _: bool = Depends(validate_api_key)):
     """Root endpoint with unified gateway information"""
+    client_ip = request.client.host if request.client else "unknown"
+    log_security_event("API_ACCESS", "Root endpoint accessed", client_ip)
+    
     places_info = []
     for backend_name, backend_config in config.backends.items():
         places_info.append({
@@ -206,14 +298,15 @@ async def root():
             "devices": backend_config.get('devices', [])
         })
     
-    return {
-        "service": "Unified Fingerprint Attendance Gateway",
-        "version": "2.1.0",
+    return create_secure_response({
+        "service": "🔒 Secure Unified Fingerprint Attendance Gateway",
+        "version": "3.0.0",
         "total_places": len(config.backends),
         "places": places_info,
         "gateway_port": config.gateway_port,
         "frontend_backend_port": config.frontend_backend_port,
         "status": "running",
+        "security_enabled": True,
         "endpoints": {
             "unified_all": [
                 "/devices/all",
@@ -233,7 +326,7 @@ async def root():
                 "/device/{device_name}/info"
             ]
         }
-    }
+    })
 
 @app.get("/health", response_model=dict)
 async def health_check():
