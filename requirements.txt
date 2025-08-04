@@ -71,8 +71,5 @@ alembic==1.11.1
 coverage==7.3.0
 pre-commit==3.3.3
 
-# API Documentation
-redoc==2.0.0
-
 # JWT Authentication
 pyjwt==2.7.0

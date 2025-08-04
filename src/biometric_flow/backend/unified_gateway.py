@@ -18,8 +18,8 @@ import logging
 import sys
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from unified_gateway.env file
+load_dotenv(dotenv_path='unified_gateway.env')
 
 # Add the core module to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'core'))
@@ -167,16 +167,19 @@ async def call_backend(session: aiohttp.ClientSession, backend_name: str, endpoi
         "Content-Type": "application/json"
     }
     
-    # Multiple authentication methods
-    backend_api_key = os.getenv("BACKEND_API_KEY")
+    # Multiple authentication methods - use place-specific API key
+    place_api_key = backend_config.get('api_key')
+    backend_api_key = os.getenv("PLACE_BACKEND_API_KEY")  # Use PLACE_BACKEND_API_KEY instead
     main_api_key = os.getenv("MAIN_API_KEY")
     
-    if backend_api_key:
+    if place_api_key:
+        headers["Authorization"] = f"Bearer {place_api_key}"
+    elif backend_api_key:
         headers["Authorization"] = f"Bearer {backend_api_key}"
     elif main_api_key:
         headers["Authorization"] = f"Bearer {main_api_key}"
     else:
-        logger.warning("No API key configured for backend communication")
+        logger.warning(f"No API key configured for backend communication with {backend_name}")
     
     # Add JWT token for enhanced security if available
     try:
@@ -327,6 +330,94 @@ async def root(request: Request, _: bool = Depends(validate_api_key)):
             ]
         }
     })
+
+@app.post("/auth/frontend/token", response_model=dict)
+async def generate_frontend_token(request: Request):
+    """Generate access token for Frontend application"""
+    try:
+        # Validate the request is coming from Frontend
+        auth_header = request.headers.get("authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Missing authorization header")
+        
+        provided_key = auth_header.replace("Bearer ", "")
+        expected_key = os.getenv("FRONTEND_API_KEY", "")
+        
+        if not expected_key or provided_key != expected_key:
+            client_ip = request.client.host if request.client else "unknown"
+            log_security_event("INVALID_FRONTEND_TOKEN_REQUEST", f"Invalid frontend key from {client_ip}", client_ip)
+            raise HTTPException(status_code=401, detail="Invalid frontend authentication")
+        
+        # Generate JWT token for frontend
+        token_payload = {
+            "service": "frontend",
+            "permissions": ["read_all_places", "read_devices", "read_attendance", "read_users", "read_summary"],
+            "places": list(config.backends.keys()),
+            "expires_in": int(os.getenv("FRONTEND_JWT_EXPIRE_HOURS", "8")) * 3600
+        }
+        
+        access_token = create_jwt_token(token_payload)
+        
+        client_ip = request.client.host if request.client else "unknown"
+        log_security_event("FRONTEND_TOKEN_GENERATED", f"Access token generated for frontend", client_ip)
+        
+        return create_secure_response({
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": int(os.getenv("FRONTEND_JWT_EXPIRE_HOURS", "8")) * 3600,
+            "permissions": token_payload["permissions"],
+            "available_places": list(config.backends.keys()),
+            "issued_at": datetime.now().isoformat()
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating frontend token: {e}")
+        raise HTTPException(status_code=500, detail="Frontend token generation failed")
+
+@app.post("/auth/place/token", response_model=dict)
+async def get_place_backend_token(place_name: str, request: Request, _: bool = Depends(validate_api_key)):
+    """Get access token from a specific place backend for unified gateway communication"""
+    try:
+        if place_name not in config.backends:
+            raise HTTPException(status_code=404, detail=f"Place '{place_name}' not found")
+        
+        backend_config = config.backends[place_name]
+        
+        # Request token from place backend
+        async with aiohttp.ClientSession() as session:
+            url = f"{backend_config['url']}/auth/token"
+            headers = {
+                "Authorization": f"Bearer {os.getenv('UNIFIED_GATEWAY_API_KEY', '')}",
+                "Content-Type": "application/json"
+            }
+            
+            async with session.post(url, headers=headers) as response:
+                if response.status == 200:
+                    token_data = await response.json()
+                    
+                    client_ip = request.client.host if request.client else "unknown"
+                    log_security_event("PLACE_TOKEN_OBTAINED", f"Token obtained from place {place_name}", client_ip)
+                    
+                    return create_secure_response({
+                        "place_name": place_name,
+                        "access_token": token_data.get("data", {}).get("access_token"),
+                        "backend_api_key": token_data.get("data", {}).get("backend_api_key"),
+                        "expires_in": token_data.get("data", {}).get("expires_in", 3600),
+                        "place_id": token_data.get("data", {}).get("place_id"),
+                        "obtained_at": datetime.now().isoformat()
+                    })
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Failed to get token from place {place_name}: {response.status} - {error_text}")
+                    raise HTTPException(status_code=502, detail=f"Failed to get token from place backend")
+                    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting place backend token: {e}")
+        raise HTTPException(status_code=500, detail="Place token retrieval failed")
 
 @app.get("/health", response_model=dict)
 async def health_check():

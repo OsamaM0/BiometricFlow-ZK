@@ -1,0 +1,28 @@
+{
+  "places": {
+    "place_001": {
+      "name": "Back Office",
+      "location": "Building A, Floor 1",
+      "url": "https://7c20187c856a.ngrok-free.app",
+      "api_key": "s-ZBBiizyZdy3y1MxxQbvAksAfGMG4anerLDiniwUSY",
+      "enabled": true,
+      "health_check_endpoint": "/health",
+      "timeout": 30
+    },
+    "place_002": {
+      "name": "Branch Office",
+      "location": "Building B, Floor 2", 
+      "url": "http://localhost:8001",
+      "api_key": "s-ZBBiizyZdy3y1MxxQbvAksAfGMG4anerLDiniwUSY",
+      "enabled": false,
+      "health_check_endpoint": "/health",
+      "timeout": 30
+    }
+  },
+  "discovery_settings": {
+    "auto_register": true,
+    "health_check_interval": 60,
+    "max_retries": 3,
+    "retry_delay": 10
+  }
+}

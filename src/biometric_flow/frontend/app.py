@@ -23,8 +23,8 @@ import asyncio
 import aiohttp
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from frontend.env file
+load_dotenv(dotenv_path='frontend.env')
 
 # Enhanced security configuration
 SECURITY_CONFIG = {
@@ -219,14 +219,69 @@ class BackendClient:
         self.timeout = timeout
         self.api_key = SECURITY_CONFIG["api_key"]
         self.session = requests.Session()
+        self.access_token = None
+        self.token_expires_at = None
         
         # Set default headers for security
         self.session.headers.update({
             "User-Agent": "BiometricFlow-Frontend/3.0",
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
             "X-Frontend-Request": "true"
         })
+        
+        # Get access token from unified gateway
+        self._get_access_token()
+    
+    def _get_access_token(self) -> bool:
+        """Get access token from unified gateway"""
+        try:
+            # Use the FRONTEND_API_KEY to get a JWT token from unified gateway
+            headers = {
+                "Authorization": f"Bearer {os.getenv('FRONTEND_API_KEY', self.api_key)}",
+                "Content-Type": "application/json"
+            }
+            
+            response = self.session.post(
+                f"{self.base_url}/auth/frontend/token",
+                headers=headers,
+                timeout=self.timeout
+            )
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                if token_data.get("success", False):
+                    data = token_data.get("data", {})
+                    self.access_token = data.get("access_token")
+                    expires_in = data.get("expires_in", 3600)
+                    self.token_expires_at = datetime.now() + timedelta(seconds=expires_in)
+                    
+                    # Update session headers with the new token
+                    self.session.headers.update({
+                        "Authorization": f"Bearer {self.access_token}"
+                    })
+                    
+                    st.success("🔐 Successfully authenticated with backend")
+                    return True
+                else:
+                    st.error(f"Token request failed: {token_data.get('error', 'Unknown error')}")
+            else:
+                st.error(f"Authentication failed with status {response.status_code}")
+                
+        except Exception as e:
+            st.error(f"Authentication error: {str(e)}")
+            
+        return False
+    
+    def _ensure_valid_token(self) -> bool:
+        """Ensure we have a valid access token"""
+        if not self.access_token or not self.token_expires_at:
+            return self._get_access_token()
+        
+        # Check if token will expire in the next 5 minutes
+        if datetime.now() + timedelta(minutes=5) >= self.token_expires_at:
+            return self._get_access_token()
+        
+        return True
     
     def _make_request(self, method: str, endpoint: str, **kwargs) -> Dict[str, Any]:
         """Make secure HTTP request with error handling"""
@@ -236,13 +291,23 @@ class BackendClient:
         if self.base_url not in SECURITY_CONFIG["allowed_backend_urls"]:
             return {"success": False, "error": "Backend URL not in allowed list"}
         
+        # Ensure we have a valid token
+        if not self._ensure_valid_token():
+            return {"success": False, "error": "Failed to authenticate with backend"}
+        
         try:
             response = self.session.request(method, url, timeout=self.timeout, **kwargs)
             
             if response.status_code == 200:
                 return response.json()
             elif response.status_code == 401:
-                return {"success": False, "error": "Authentication failed - check API key"}
+                # Token might be expired, try to refresh
+                if self._get_access_token():
+                    # Retry the request with new token
+                    response = self.session.request(method, url, timeout=self.timeout, **kwargs)
+                    if response.status_code == 200:
+                        return response.json()
+                return {"success": False, "error": "Authentication failed - invalid or expired token"}
             elif response.status_code == 403:
                 return {"success": False, "error": "Access denied"}
             elif response.status_code == 429:

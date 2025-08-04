@@ -113,79 +113,88 @@ After successful deployment, access your enterprise system through:
 
 ## 🏗️ Enterprise System Architecture
 
-BiometricFlow-ZK implements a **sophisticated microservices architecture** designed for enterprise-scale biometric attendance management across unlimited locations with high availability, security, and performance.
+BiometricFlow-ZK implements a **sophisticated microservices architecture** designed for enterprise-scale biometric attendance management with **token-based authentication** for distributed deployment across multiple servers with complete service independence.
 
 ### **🎯 Core Architecture Principles**
-- **🔗 Microservices Design**: Loosely coupled services enabling independent scaling and deployment
+- **🔗 Microservices Design**: Loosely coupled services with token-based authentication for independent deployment
+- **🔐 Token-Based Security**: JWT and API key authentication for secure inter-service communication
+- **🌐 Server Independence**: Each service can be deployed on different servers with no file system dependencies
 - **⚡ Event-Driven Architecture**: Asynchronous processing for maximum performance and responsiveness  
 - **🛡️ Security-First Approach**: Multi-layer security with enterprise-grade authentication and authorization
 - **📈 Horizontal Scalability**: Add unlimited locations and devices without performance degradation
-- **🌐 Cloud-Native Ready**: NGROK-optimized for instant cloud deployment and remote access
+- **🚀 Cloud-Native Ready**: NGROK-optimized for instant cloud deployment and remote access
 
-### **🏛️ System Architecture Diagram**
+### **🏛️ Token-Based Authentication Architecture**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                🎨 Presentation Layer (Port 8501)               │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │          🚀 Streamlit Executive Dashboard                   │ │
-│  │  • Real-time analytics and business intelligence           │ │
+│  │  • Automatic token authentication with refresh             │ │
 │  │  • Multi-location data visualization and reporting         │ │
 │  │  • Role-based access control and user management           │ │
 │  │  • Mobile-responsive design with offline capabilities      │ │
 │  │  • Advanced export and scheduling features                 │ │
+│  │  • Environment: frontend.env                               │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────┬───────────────────────────────────────────┘
-                      │ 🔐 Secure HTTPS/API Calls
-                      │ JWT Authentication & Authorization
+                      │ 🔐 JWT Token Authentication
+                      │ POST /auth/frontend/token → Bearer Token
 ┌─────────────────────▼───────────────────────────────────────────┐
-│              🌐 API Gateway Layer (Port 9000)                  │
+│              🌐 Unified Gateway Layer (Port 9000)              │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │            🔗 Unified Enterprise Gateway                    │ │
-│  │  • Single API endpoint aggregating all locations           │ │
+│  │  • Token generation for frontend access                    │ │
+│  │  • Place backend token management                          │ │
 │  │  • Advanced load balancing and failover mechanisms         │ │
 │  │  • Data normalization and cross-location analytics         │ │
 │  │  • Rate limiting, request throttling, and DDoS protection  │ │
 │  │  • Real-time health monitoring with alerting system        │ │
-│  │  • Async processing with worker queue management           │ │
+│  │  • Environment: unified_gateway.env                        │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └────────┬─────────────────┬─────────────────┬─────────────────────┘
-         │                 │                 │ 🔗 Async HTTP/gRPC
-         │                 │                 │ Circuit Breaker Pattern
+         │                 │                 │ 🔗 Token-Based HTTP API
+         │                 │                 │ POST /auth/token → Bearer Token
 ┌────────▼─────┐  ┌────────▼─────┐  ┌────────▼─────┐
-│ 🏢 Location 1 │  │ 🏪 Location 2 │  │ 🏭 Location 3 │
-│ Backend      │  │ Backend      │  │ Backend      │
-│ (Port 8000)  │  │ (Port 8001)  │  │ (Port 8002)  │
-│              │  │              │  │              │
-│ 🚀 FastAPI   │  │ 🚀 FastAPI   │  │ 🚀 FastAPI   │
-│ Microservice │  │ Microservice │  │ Microservice │
-│              │  │              │  │              │
-│ • Device Mgmt│  │ • Device Mgmt│  │ • Device Mgmt│
-│ • User Auth  │  │ • User Auth  │  │ • User Auth  │
-│ • Data Cache │  │ • Data Cache │  │ • Data Cache │
-│ • Local DB   │  │ • Local DB   │  │ • Local DB   │
-└──────┬───────┘  └──────┬───────┘  └──────┬───────┘
-       │                 │                 │ 🔌 ZK Protocol/TCP
-       │                 │                 │ Device Communication
-┌──────▼───────┐  ┌──────▼───────┐  ┌──────▼───────┐
-│ 📱 Biometric │  │ 📱 Biometric │  │ 📱 Biometric │
-│ Device Layer │  │ Device Layer │  │ Device Layer │
-│              │  │              │  │              │
-│ • Device 1   │  │ • Device 1   │  │ • Device 1   │
-│ • Device 2   │  │ • Device 2   │  │ • Device 2   │
-│ • Device N   │  │ • Device N   │  │ • Device N   │
-│              │  │              │  │              │
-│ ZK-4500/6000 │  │ ZK-4500/6000 │  │ ZK-4500/6000 │
-│ Fingerprint  │  │ Fingerprint  │  │ Fingerprint  │
-│ Readers      │  │ Readers      │  │ Readers      │
-└──────────────┘  └──────────────┘  └──────────────┘
+│ 🏢 Server A   │  │ 🏪 Server B   │  │ 🏭 Server C   │
+│ Place Backend │  │ Place Backend │  │ Place Backend │
+│ (Port 8000)   │  │ (Port 8001)   │  │ (Port 8002)   │
+│               │  │               │  │               │
+│ 🚀 FastAPI    │  │ 🚀 FastAPI    │  │ 🚀 FastAPI    │
+│ Microservice  │  │ Microservice  │  │ Microservice  │
+│               │  │               │  │               │
+│ • Token Auth  │  │ • Token Auth  │  │ • Token Auth  │
+│ • Device Mgmt │  │ • Device Mgmt │  │ • Device Mgmt │
+│ • Local Config│  │ • Local Config│  │ • Local Config│
+│ • Independent │  │ • Independent │  │ • Independent │
+│ Environment:  │  │ Environment:  │  │ Environment:  │
+│ place_backend │  │ place_backend │  │ place_backend │
+│ .env          │  │ .env          │  │ .env          │
+└──────┬────────┘  └──────┬────────┘  └──────┬────────┘
+       │                  │                  │ 🔌 ZK Protocol/TCP
+       │                  │                  │ Device Communication
+┌──────▼────────┐  ┌──────▼────────┐  ┌──────▼────────┐
+│ 📱 Biometric  │  │ 📱 Biometric  │  │ 📱 Biometric  │
+│ Device Layer  │  │ Device Layer  │  │ Device Layer  │
+│               │  │               │  │               │
+│ • Device 1    │  │ • Device 1    │  │ • Device 1    │
+│ • Device 2    │  │ • Device 2    │  │ • Device 2    │
+│ • Device N    │  │ • Device N    │  │ • Device N    │
+│               │  │               │  │               │
+│ ZK-4500/6000  │  │ ZK-4500/6000  │  │ ZK-4500/6000  │
+│ Fingerprint   │  │ Fingerprint   │  │ Fingerprint   │
+│ Readers       │  │ Readers       │  │ Readers       │
+└───────────────┘  └───────────────┘  └───────────────┘
 ```
 
-### **🔄 Enterprise Data Flow**
+### **🔄 Token-Based Authentication Flow**
 ```
-📱 Fingerprint Scan → 🔐 Device Processing → 📡 Network Transmission → 
-🏢 Backend Validation → 💾 Local Storage → 🌐 Gateway Aggregation → 
-📊 Real-time Analytics → 🎨 Dashboard Visualization → 💼 Executive Reports
+1. � Service Startup → 🔐 Environment Loading → � Key Generation
+2. 💻 Frontend Request → 🌐 Gateway Token → ✅ JWT Authentication  
+3. 🌐 Gateway Request → 🏢 Backend Token → ✅ Bearer Authentication
+4. � Device Access → 🔐 Secure Processing → 📊 Real-time Updates
+5. 🔄 Token Refresh → ⚡ Automatic Renewal → �️ Continuous Security
 ```
 
 ## 🔒 Enterprise Security Features
@@ -335,21 +344,71 @@ BiometricFlow-ZK provides a **complete RESTful API ecosystem** with enterprise-g
 
 ### **⚡ One-Click Enterprise Setup**
 
-#### **🔒 Production Deployment (Recommended)**
+#### **🔒 Production Deployment with Token Authentication (Recommended)**
 ```powershell
 # Windows Enterprise Setup
 git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
 cd BiometricFlow-ZK
-.\setup_security.ps1
-.\scripts\deployment\start_all_services.bat
+
+# 1. Generate secure authentication keys
+python generate_keys.py
+
+# 2. Start all services with token authentication
+python start_place_backend.py
+python start_unified_gateway.py  
+python start_frontend.py
+
+# 3. Access dashboard at http://localhost:8501
 ```
 
 ```bash
 # Linux/macOS Enterprise Setup
 git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
 cd BiometricFlow-ZK
-chmod +x scripts/deployment/*.sh
-./scripts/deployment/start_all_services.sh
+
+# 1. Generate secure authentication keys
+python generate_keys.py
+
+# 2. Start all services with token authentication
+python start_place_backend.py &
+python start_unified_gateway.py &
+python start_frontend.py &
+
+# 3. Access dashboard at http://localhost:8501
+```
+
+#### **🌐 Multi-Server Deployment (Distributed)**
+```bash
+# Server A - Place Backend
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
+cd BiometricFlow-ZK
+python generate_keys.py
+python start_place_backend.py
+
+# Server B - Unified Gateway
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
+cd BiometricFlow-ZK
+python generate_keys.py
+# Edit unified_gateway.env to point to Server A
+python start_unified_gateway.py
+
+# Server C - Frontend Dashboard
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
+cd BiometricFlow-ZK
+python generate_keys.py
+# Edit frontend.env to point to Server B
+python start_frontend.py
+```
+
+#### **🧪 Test Authentication Flow**
+```bash
+# Verify complete token-based authentication
+python test_auth_flow.py
+
+# Expected output:
+# ✅ Frontend → Gateway authentication: SUCCESS
+# ✅ Gateway → Place Backend authentication: SUCCESS  
+# ✅ Full authentication chain: OPERATIONAL
 ```
 
 #### **🌐 NGROK Cloud Deployment**
@@ -403,70 +462,263 @@ pip install -r requirements-dev.txt
 pip install -e .
 ```
 
-#### **3. Security Configuration**
+#### **3. Authentication & Environment Setup**
 ```bash
-# Generate secure API keys
-python setup_security.py
+# Generate secure API keys and environment files
+python generate_keys.py
 
-# Or manually create .env file
-cat > .env << EOF
-MAIN_API_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-BACKEND_API_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-JWT_SECRET=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-ENVIRONMENT=production
-EOF
+# This creates three environment files:
+# - place_backend.env     (Place backend authentication)
+# - unified_gateway.env   (Gateway authentication & routing)  
+# - frontend.env          (Frontend authentication)
+
+# Verify environment files
+ls -la *.env
+
+# Expected files:
+# place_backend.env      - Place backend configuration
+# unified_gateway.env    - Gateway configuration with backend URLs
+# frontend.env          - Frontend configuration with gateway URL
 ```
 
-#### **4. Device & Location Configuration**
+#### **4. Service Configuration Files**
+
+**Device Configuration (devices_config.json)**
 ```bash
-# Copy example configurations
-cp config/devices_config.json.example config/devices_config.json
-cp config/unified_backends_config.json.example config/unified_backends_config.json
+# Copy and customize device configuration
+cp config/devices_config.json.example devices_config.json
 
 # Edit with your specific device and location details
-nano config/devices_config.json
-nano config/unified_backends_config.json
+nano devices_config.json
 ```
 
-### **📊 Verification & Testing**
+**Backend Places Configuration (backend_places_config.json)**
+```bash  
+# Copy and customize backend places configuration
+cp config/backend_places_config.json.example backend_places_config.json
+
+# Edit with your backend service URLs and configuration
+nano backend_places_config.json
+```
+
+### **📊 Verification & Testing with Token Authentication**
 ```bash
-# Test API connectivity
-python test_api_access.py
+# Test complete authentication flow
+python test_auth_flow.py
 
-# Verify security configuration
-curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8000/health
+# Expected output:
+# ✅ Frontend → Gateway authentication: SUCCESS
+# ✅ Gateway → Place Backend authentication: SUCCESS  
+# ✅ Full authentication chain: OPERATIONAL
 
-# Run comprehensive tests
-python -m pytest tests/ -v
+# Test individual service endpoints
+# 1. Test place backend token generation
+curl -X POST http://localhost:8000/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your_place_backend_api_key"}'
 
-# Check service health
-curl http://localhost:9000/health/full
+# 2. Test gateway token endpoints
+curl -X POST http://localhost:9000/auth/frontend/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your_frontend_api_key"}'
+
+# 3. Verify service health with tokens
+TOKEN=$(curl -s -X POST http://localhost:9000/auth/frontend/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your_frontend_api_key"}' | jq -r '.access_token')
+
+curl -H "Authorization: Bearer $TOKEN" http://localhost:9000/health
+
+# 4. Access frontend dashboard
+# Open browser: http://localhost:8501
+# Dashboard should auto-authenticate with gateway
 ```
 
 ## ⚙️ Enterprise Configuration Management
 
-BiometricFlow-ZK uses a **hierarchical configuration system** supporting multiple environments with secure credential management and hot-reload capabilities.
+BiometricFlow-ZK uses a **token-based distributed configuration system** supporting multiple environments with secure credential management and service independence for multi-server deployment.
 
 ### **🏗️ Configuration Architecture**
 
 ```
-config/
-├── 📂 environments/           # Environment-specific settings
-│   ├── 🔧 development.env     # Development configuration
-│   ├── 🏭 production.env      # Production configuration  
-│   └── 📊 backends.json       # Backend service definitions
-├── 📂 devices/               # Device configurations per location
-│   ├── 📱 place1.json        # Place 1 device configuration
-│   ├── 📱 place2.json        # Place 2 device configuration
-│   └── 📱 template.json      # Device configuration template
-└── 📂 security/              # Security and authentication
-    ├── 🔐 api_keys.env       # API key management
-    └── 🛡️ security.json     # Security policy configuration
+Configuration Files:
+├── � Authentication Files        # Service-specific authentication
+│   ├── � place_backend.env       # Place backend API key & JWT secret
+│   ├── 📄 unified_gateway.env     # Gateway API keys & backend URLs
+│   └── 📄 frontend.env            # Frontend API key & gateway URL
+├── 📱 Device Configuration        # Device management per location
+│   ├── � devices_config.json     # ZK device definitions & settings
+│   └── � device_template.json    # Device configuration template
+├── 🌐 Service Configuration       # Backend service definitions
+│   ├── 🏢 backend_places_config.json # Backend services & routing
+│   └── � service_template.json   # Service configuration template
+└── �️ Utility Scripts           # Management & testing
+    ├── 🔑 generate_keys.py        # Generate all authentication keys
+    ├── � start_*.py             # Service startup scripts
+    └── 🧪 test_auth_flow.py       # Authentication testing
 ```
 
-### **📱 Device Configuration**
+### **🔐 Token-Based Authentication Configuration**
 
-#### **Example: Location Device Setup**
+#### **Service Authentication Keys (Generated by generate_keys.py)**
+
+**Place Backend Authentication (place_backend.env)**
+```bash
+# Generated automatically by generate_keys.py
+PLACE_BACKEND_API_KEY=<32-char-secure-key>
+JWT_SECRET=<32-char-jwt-secret>
+ENVIRONMENT=production
+PLACE_BACKEND_NAME=Place_1_MainOffice
+PLACE_BACKEND_PORT=8000
+DEVICES_CONFIG_FILE=devices_config.json
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60
+ALLOWED_ORIGINS=http://localhost:9000
+```
+
+**Unified Gateway Authentication (unified_gateway.env)**
+```bash
+# Generated automatically by generate_keys.py
+UNIFIED_GATEWAY_API_KEY=<32-char-gateway-key>
+PLACE_BACKEND_API_KEY=<matches-place-backend-key>
+JWT_SECRET=<matches-jwt-secret>
+ENVIRONMENT=production
+UNIFIED_GATEWAY_PORT=9000
+PLACE_BACKEND_URL=http://localhost:8000
+BACKEND_PLACES_CONFIG_FILE=backend_places_config.json
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60
+ALLOWED_ORIGINS=http://localhost:8501
+```
+
+**Frontend Authentication (frontend.env)**
+```bash
+# Generated automatically by generate_keys.py
+FRONTEND_API_KEY=<32-char-frontend-key>
+JWT_SECRET=<matches-jwt-secret>
+ENVIRONMENT=production
+FRONTEND_PORT=8501
+UNIFIED_GATEWAY_URL=http://localhost:9000
+SESSION_TIMEOUT=3600
+AUTO_REFRESH_INTERVAL=300
+```
+
+### **� Automated Key Generation & Service Management**
+
+#### **generate_keys.py - Secure Key Generation**
+```python
+# Automatically generates all required authentication keys and environment files
+python generate_keys.py
+
+# Creates:
+# 1. place_backend.env     - Place backend API key & configuration
+# 2. unified_gateway.env   - Gateway keys matching backend keys
+# 3. frontend.env          - Frontend key for gateway access
+
+# Features:
+# ✅ 32-character cryptographically secure keys
+# ✅ Automatic key synchronization between services
+# ✅ Environment-specific configuration
+# ✅ Backup of existing files (if any)
+```
+
+#### **Service Startup Scripts**
+```bash
+# start_place_backend.py - Place Backend Service
+python start_place_backend.py
+# • Loads place_backend.env automatically
+# • Starts FastAPI on configured port
+# • Provides POST /auth/token endpoint
+# • Manages local device connections
+
+# start_unified_gateway.py - Unified Gateway Service  
+python start_unified_gateway.py
+# • Loads unified_gateway.env automatically
+# • Connects to place backend using API key
+# • Provides frontend and place token endpoints
+# • Routes requests with token authentication
+
+# start_frontend.py - Frontend Dashboard
+python start_frontend.py
+# • Loads frontend.env automatically
+# • Auto-authenticates with gateway using API key
+# • Handles token refresh automatically
+# • Provides real-time dashboard interface
+```
+
+#### **test_auth_flow.py - Authentication Verification**
+```python
+# Comprehensive authentication testing
+python test_auth_flow.py
+
+# Tests:
+# 1. Frontend → Gateway token generation
+# 2. Gateway → Place backend token generation  
+# 3. Full authentication chain verification
+# 4. Token validation and expiration
+# 5. Service connectivity and response times
+
+# Output example:
+# ✅ Frontend → Gateway authentication: SUCCESS
+# ✅ Gateway → Place Backend authentication: SUCCESS  
+# ✅ Full authentication chain: OPERATIONAL
+# 📊 Average response time: 45ms
+```
+
+### **🌐 Multi-Server Deployment Configuration**
+
+#### **Server Independence Setup**
+For deployment across different servers, each service runs independently:
+
+**Server A - Place Backend**
+```bash
+# 1. Clone repository
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
+cd BiometricFlow-ZK
+
+# 2. Generate keys (creates place_backend.env)
+python generate_keys.py
+
+# 3. Configure devices (edit devices_config.json)
+# 4. Start service
+python start_place_backend.py
+# Service available at: http://server-a:8000
+```
+
+**Server B - Unified Gateway**
+```bash
+# 1. Clone repository  
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
+cd BiometricFlow-ZK
+
+# 2. Generate keys (creates unified_gateway.env)
+python generate_keys.py
+
+# 3. Edit unified_gateway.env to point to Server A:
+PLACE_BACKEND_URL=http://server-a:8000
+PLACE_BACKEND_API_KEY=<copy-from-server-a>
+
+# 4. Start service
+python start_unified_gateway.py
+# Service available at: http://server-b:9000
+```
+
+**Server C - Frontend Dashboard**
+```bash
+# 1. Clone repository
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
+cd BiometricFlow-ZK
+
+# 2. Generate keys (creates frontend.env)
+python generate_keys.py
+
+# 3. Edit frontend.env to point to Server B:
+UNIFIED_GATEWAY_URL=http://server-b:9000
+
+# 4. Start service
+python start_frontend.py
+# Dashboard available at: http://server-c:8501
+```
 ```json
 // config/devices/place1.json
 {
@@ -574,30 +826,66 @@ config/
 
 ### **🔐 Security Configuration**
 
-#### **Environment Variables (.env)**
+#### **Environment Variables (Service-Specific)**
+
+**Place Backend Configuration (place_backend.env)**
 ```bash
 # =================================
-# SECURITY CONFIGURATION
+# PLACE BACKEND SECURITY
 # =================================
-
-# Primary API Keys
-MAIN_API_KEY=your_32_character_secure_main_api_key_here
-BACKEND_API_KEY=your_32_character_backend_communication_key
-FRONTEND_API_KEY=your_32_character_frontend_access_key
+PLACE_BACKEND_API_KEY=your_32_character_place_backend_api_key_here
 JWT_SECRET=your_32_character_jwt_signing_secret_key
+ENVIRONMENT=production
+
+# Service Configuration
+PLACE_BACKEND_NAME=Place_1_MainOffice
+PLACE_BACKEND_PORT=8000
+DEVICES_CONFIG_FILE=devices_config.json
 
 # Security Settings
-ENVIRONMENT=production
-JWT_EXPIRE_HOURS=24
-SESSION_TIMEOUT=3600
-ALLOW_NO_AUTH=false
-
-# Rate Limiting
 RATE_LIMIT_REQUESTS=100
 RATE_LIMIT_WINDOW=60
-MAX_REQUEST_SIZE=10485760
+ALLOWED_ORIGINS=http://localhost:9000
+```
 
-# Network Security  
+**Unified Gateway Configuration (unified_gateway.env)**
+```bash
+# =================================
+# UNIFIED GATEWAY SECURITY
+# =================================
+UNIFIED_GATEWAY_API_KEY=your_32_character_gateway_api_key_here
+PLACE_BACKEND_API_KEY=your_32_character_place_backend_api_key_here
+JWT_SECRET=your_32_character_jwt_signing_secret_key
+ENVIRONMENT=production
+
+# Service Configuration
+UNIFIED_GATEWAY_PORT=9000
+PLACE_BACKEND_URL=http://localhost:8000
+BACKEND_PLACES_CONFIG_FILE=backend_places_config.json
+
+# Security Settings
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW=60
+ALLOWED_ORIGINS=http://localhost:8501
+```
+
+**Frontend Configuration (frontend.env)**
+```bash
+# =================================
+# FRONTEND SECURITY
+# =================================
+FRONTEND_API_KEY=your_32_character_frontend_api_key_here
+JWT_SECRET=your_32_character_jwt_signing_secret_key
+ENVIRONMENT=production
+
+# Service Configuration
+FRONTEND_PORT=8501
+UNIFIED_GATEWAY_URL=http://localhost:9000
+
+# Security Settings
+SESSION_TIMEOUT=3600
+AUTO_REFRESH_INTERVAL=300
+```  
 ALLOWED_ORIGINS=https://localhost:8501,https://your-domain.com
 ALLOWED_IPS=192.168.1.0/24,10.0.0.0/8
 BACKEND_URL=https://localhost:9000
@@ -705,83 +993,150 @@ LOG_FILE=logs/system.log
 
 ## 🚀 Enterprise Operations Guide
 
-### System Deployment Options
+### Token-Based Service Deployment
 
-#### 🔧 Production Deployment
+#### 🔧 Production Deployment with Authentication
 
-**Complete Enterprise Stack:**
+**Complete Enterprise Stack with Token Authentication:**
 ```bash
-# Windows Enterprise
-scripts\deployment\start_all_services.bat
+# 1. Generate secure authentication keys
+python generate_keys.py
 
-# Linux/Unix Production
-./scripts/deployment/start_all_services.sh
+# 2. Start services in correct order
+python start_place_backend.py    # Starts on port 8000
+python start_unified_gateway.py  # Starts on port 9000
+python start_frontend.py         # Starts on port 8501
+
+# 3. Verify authentication flow
+python test_auth_flow.py
 ```
 
-**Service-Specific Deployment:**
+**Service-Specific Deployment with Independent Authentication:**
 ```bash
-# Backend Microservices
-./scripts/deployment/start_place1_backend.sh    # Place 1 Service
-./scripts/deployment/start_place2_backend.sh    # Place 2 Service
-./scripts/deployment/start_unified_backend.sh   # Gateway Service
+# Place Backend Service (Server A)
+python start_place_backend.py
+# Loads: place_backend.env, devices_config.json
+# Provides: POST /auth/token for unified gateway
 
-# Frontend Application
-./scripts/deployment/start_frontend.sh          # Executive Dashboard
+# Unified Gateway Service (Server B)  
+python start_unified_gateway.py
+# Loads: unified_gateway.env, backend_places_config.json
+# Provides: POST /auth/frontend/token, POST /auth/place/token
+
+# Frontend Dashboard (Server C)
+python start_frontend.py
+# Loads: frontend.env
+# Auto-authenticates with unified gateway
 ```
 
-#### ☁️ Cloud Deployment (NGROK)
+#### ☁️ Cloud Deployment with Token Security
 
-**Zero-Configuration Cloud Setup:**
+**Multi-Server Cloud Setup:**
 ```bash
-# Automated cloud deployment with NGROK
-python scripts/utilities/project_manager.py --deploy-cloud
+# Server A - Place Backend
+export PLACE_BACKEND_PORT=8000
+export PLACE_BACKEND_API_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+python start_place_backend.py
 
-# Manual NGROK setup
-ngrok start --all --config=ngrok.yml
+# Server B - Gateway (Use Server A's API key)
+export UNIFIED_GATEWAY_PORT=9000
+export PLACE_BACKEND_URL=https://server-a.your-domain.com:8000
+export PLACE_BACKEND_API_KEY=<server_a_api_key>
+python start_unified_gateway.py
+
+# Server C - Frontend (Use Server B's URL)
+export FRONTEND_PORT=8501
+export UNIFIED_GATEWAY_URL=https://server-b.your-domain.com:9000
+python start_frontend.py
 ```
 
-### 🌐 Service Architecture
+### 🌐 Service Architecture with Token Authentication
 
-| **Service Layer** | **Endpoint** | **Purpose** | **Auth Required** |
-|-------------------|--------------|-------------|-------------------|
-| **Executive Dashboard** | `http://localhost:8501` | Real-time analytics & insights | ✅ |
-| **Unified Gateway** | `http://localhost:9000` | Central API orchestration | ✅ |
-| **Interactive API Docs** | `http://localhost:9000/docs` | Swagger UI documentation | ✅ |
-| **Place 1 Backend** | `http://localhost:8000` | Location-specific operations | ✅ |
-| **Place 2 Backend** | `http://localhost:8001` | Location-specific operations | ✅ |
-| **Health Monitoring** | `http://localhost:9000/health` | System status monitoring | ❌ |
+| **Service Layer** | **Endpoint** | **Authentication** | **Purpose** |
+|-------------------|--------------|-------------------|-------------|
+| **Executive Dashboard** | `http://localhost:8501` | JWT Auto-Refresh | Real-time analytics & insights |
+| **Unified Gateway** | `http://localhost:9000` | API Key + Bearer Token | Central API orchestration |
+| **Interactive API Docs** | `http://localhost:9000/docs` | Bearer Token | Swagger UI documentation |
+| **Place Backend** | `http://localhost:8000` | API Key Authentication | Location-specific operations |
+| **Health Monitoring** | `http://localhost:9000/health` | No Auth Required | System status monitoring |
 
-### 🔐 Authentication & Access
+### 🔐 Authentication & Token Management
 
-#### API Key Authentication
+#### Token Generation Flow
 ```bash
-# Set your API key in environment
-export BIOMETRIC_API_KEY="your-enterprise-api-key"
+# 1. Generate keys for all services
+python generate_keys.py
+# Creates: place_backend.env, unified_gateway.env, frontend.env
 
-# Or use in requests
-curl -H "X-API-Key: your-api-key" http://localhost:9000/devices/all
+# 2. Start place backend (provides tokens to gateway)
+python start_place_backend.py
+# Endpoint: POST /auth/token
+
+# 3. Start unified gateway (provides tokens to frontend)
+python start_unified_gateway.py  
+# Endpoints: POST /auth/frontend/token, POST /auth/place/token
+
+# 4. Start frontend (auto-authenticates with gateway)
+python start_frontend.py
+# Auto-refreshes tokens every 5 minutes
 ```
 
-#### JWT Token Authentication
+#### Manual Token Testing
 ```bash
-# Login to get JWT token
-curl -X POST http://localhost:9000/auth/login \
+# Get token from place backend
+curl -X POST http://localhost:8000/auth/token \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "secure_password"}'
+  -d '{"api_key": "your_place_backend_api_key"}'
 
-# Use JWT token in subsequent requests
-curl -H "Authorization: Bearer <jwt-token>" http://localhost:9000/users/all
+# Get frontend token from gateway
+curl -X POST http://localhost:9000/auth/frontend/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your_frontend_api_key"}'
+
+# Use token in API calls
+curl -H "Authorization: Bearer <token>" http://localhost:9000/devices/all
 ```
 
 ## 📚 API Reference Documentation
 
-### 🌐 Unified Gateway API (v3.0)
+### 🌐 Unified Gateway API (v3.0) with Token Authentication
 
-The Unified Gateway provides a comprehensive REST API for managing multi-location fingerprint attendance systems with enterprise-grade security and performance.
+The Unified Gateway provides a comprehensive REST API for managing multi-location fingerprint attendance systems with **enterprise-grade token-based authentication** and performance.
 
-#### **🔗 Core Endpoints**
+#### **🔐 Authentication Endpoints**
 
-##### System Management
+##### Token Management
+```http
+POST   /auth/frontend/token     # Generate JWT token for frontend access
+POST   /auth/place/token        # Generate JWT token for place backend communication
+GET    /auth/verify            # Verify JWT token validity
+POST   /auth/refresh           # Refresh JWT token
+```
+
+**Frontend Token Request:**
+```bash
+curl -X POST http://localhost:9000/auth/frontend/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your_frontend_api_key"}'
+
+# Response:
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "token_type": "bearer",
+  "expires_in": 3600
+}
+```
+
+**Place Backend Token Request:**
+```bash
+curl -X POST http://localhost:9000/auth/place/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your_place_backend_api_key"}'
+```
+
+#### **🔗 Core Endpoints with Bearer Authentication**
+
+##### System Management (Bearer Token Required)
 ```http
 GET    /                    # Gateway status and system information
 GET    /health             # Comprehensive health check for all services
@@ -789,7 +1144,7 @@ GET    /metrics            # Performance metrics and analytics
 GET    /version            # API version and build information
 ```
 
-##### Multi-Location Operations
+##### Multi-Location Operations (Bearer Token Required)
 ```http
 GET    /places             # List all configured locations with metadata
 GET    /devices/all        # Aggregate device information from all locations
@@ -798,7 +1153,7 @@ GET    /users/all          # Complete user directory across locations
 GET    /summary/all        # Real-time summary statistics dashboard
 ```
 
-##### Location-Specific Operations
+##### Location-Specific Operations (Bearer Token Required)
 ```http
 GET    /place/{place_name}/devices        # Location device inventory
 GET    /place/{place_name}/attendance     # Location attendance records
@@ -837,66 +1192,136 @@ GET /users/all?page=1&limit=100&sort_by=name&order=asc
 GET /attendance/all?department=IT&shift=morning&status=present
 ```
 
-### 🔧 Integration Examples
+### 🔧 Integration Examples with Token Authentication
 
-#### **Python SDK Usage**
+#### **Python SDK Usage with Automatic Token Management**
 ```python
 import requests
 from datetime import datetime, timedelta
+import time
 
-# Configure API client
-API_BASE = "http://localhost:9000"
-API_KEY = "your-enterprise-api-key"
-headers = {"X-API-Key": API_KEY}
+class BiometricFlowClient:
+    def __init__(self, gateway_url, api_key):
+        self.gateway_url = gateway_url
+        self.api_key = api_key
+        self.access_token = None
+        self.token_expires_at = None
+    
+    def _get_access_token(self):
+        """Get or refresh access token"""
+        if self.access_token and self.token_expires_at > time.time():
+            return self.access_token
+            
+        response = requests.post(
+            f"{self.gateway_url}/auth/frontend/token",
+            json={"api_key": self.api_key}
+        )
+        response.raise_for_status()
+        
+        token_data = response.json()
+        self.access_token = token_data["access_token"]
+        self.token_expires_at = time.time() + token_data["expires_in"] - 60  # 1min buffer
+        
+        return self.access_token
+    
+    def get_attendance(self, start_date=None, end_date=None):
+        """Get attendance data with automatic token refresh"""
+        headers = {"Authorization": f"Bearer {self._get_access_token()}"}
+        
+        params = {}
+        if start_date:
+            params["start_date"] = start_date.isoformat()
+        if end_date:
+            params["end_date"] = end_date.isoformat()
+            
+        response = requests.get(
+            f"{self.gateway_url}/attendance/all",
+            headers=headers,
+            params=params
+        )
+        response.raise_for_status()
+        return response.json()
 
-# Get real-time attendance data
-response = requests.get(
-    f"{API_BASE}/attendance/all",
-    headers=headers,
-    params={
-        "start_date": (datetime.now() - timedelta(days=7)).isoformat(),
-        "end_date": datetime.now().isoformat(),
-        "format": "json"
-    }
+# Usage example
+client = BiometricFlowClient("http://localhost:9000", "your_frontend_api_key")
+attendance_data = client.get_attendance(
+    start_date=datetime.now() - timedelta(days=7),
+    end_date=datetime.now()
 )
-attendance_data = response.json()
 ```
 
-#### **PowerShell Integration**
+#### **PowerShell Integration with Token Management**
 ```powershell
-# Enterprise PowerShell integration
-$apiKey = "your-enterprise-api-key"
-$headers = @{"X-API-Key" = $apiKey}
+# PowerShell function for token-based API access
+function Get-BiometricToken {
+    param(
+        [string]$GatewayUrl = "http://localhost:9000",
+        [string]$ApiKey
+    )
+    
+    $body = @{ api_key = $ApiKey } | ConvertTo-Json
+    $response = Invoke-RestMethod -Uri "$GatewayUrl/auth/frontend/token" `
+                                  -Method POST `
+                                  -Body $body `
+                                  -ContentType "application/json"
+    return $response.access_token
+}
 
-# Get system health status
-$health = Invoke-RestMethod -Uri "http://localhost:9000/health" -Headers $headers
-Write-Host "System Status: $($health.status)"
+function Get-AttendanceData {
+    param(
+        [string]$GatewayUrl = "http://localhost:9000",
+        [string]$BearerToken,
+        [datetime]$StartDate,
+        [datetime]$EndDate
+    )
+    
+    $headers = @{ Authorization = "Bearer $BearerToken" }
+    $params = @{
+        start_date = $StartDate.ToString("yyyy-MM-dd")
+        end_date = $EndDate.ToString("yyyy-MM-dd")
+    }
+    
+    $uri = "$GatewayUrl/attendance/all?" + (($params.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join "&")
+    
+    return Invoke-RestMethod -Uri $uri -Headers $headers
+}
 
-# Export attendance report
-$attendance = Invoke-RestMethod -Uri "http://localhost:9000/attendance/all" -Headers $headers
+# Usage example
+$token = Get-BiometricToken -ApiKey "your_frontend_api_key"
+$attendance = Get-AttendanceData -BearerToken $token -StartDate (Get-Date).AddDays(-7) -EndDate (Get-Date)
 $attendance | Export-Csv -Path "attendance_report.csv" -NoTypeInformation
 ```
 
-#### **cURL Command Examples**
+#### **cURL Command Examples with Token Authentication**
 ```bash
-# System health check
-curl -H "X-API-Key: your-api-key" \
+# 1. Get authentication token
+TOKEN=$(curl -s -X POST http://localhost:9000/auth/frontend/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your_frontend_api_key"}' | \
+  jq -r '.access_token')
+
+# 2. Use token for API calls
+curl -H "Authorization: Bearer $TOKEN" \
      "http://localhost:9000/health"
 
-# Get comprehensive attendance report
-curl -H "X-API-Key: your-api-key" \
+# 3. Get comprehensive attendance report
+curl -H "Authorization: Bearer $TOKEN" \
      "http://localhost:9000/attendance/all?start_date=2025-01-01&end_date=2025-01-31&format=csv" \
      -o attendance_report.csv
 
-# Real-time device synchronization
+# 4. Real-time device synchronization
 curl -X POST \
-     -H "X-API-Key: your-api-key" \
+     -H "Authorization: Bearer $TOKEN" \
      -H "Content-Type: application/json" \
      "http://localhost:9000/device/ZK-001/sync"
 
-# Advanced user search with pagination
-curl -H "X-API-Key: your-api-key" \
+# 5. Advanced user search with pagination
+curl -H "Authorization: Bearer $TOKEN" \
      "http://localhost:9000/users/all?search=john&department=IT&page=1&limit=50"
+
+# 6. Verify token validity
+curl -H "Authorization: Bearer $TOKEN" \
+     "http://localhost:9000/auth/verify"
 ```
 
 # Get place-specific data
@@ -1462,18 +1887,33 @@ Special thanks to our enterprise customers who provide valuable feedback, testin
 
 ## 📊 Project Status & Roadmap
 
-### **🚀 Current Release: v3.0.0 Enterprise**
+### **🚀 Current Release: v3.1.0 Enterprise with Token Authentication**
 **Status**: ✅ **Production Ready** | **Last Updated**: January 2025
 
 #### **✅ Completed Features**
 
+##### **Enterprise Token-Based Authentication (NEW)**
+- ✅ **JWT Token Authentication** - Secure token-based authentication between all services
+- ✅ **Service Independence** - Each service deployable on separate servers with no file dependencies
+- ✅ **Automatic Key Generation** - `generate_keys.py` creates all required authentication keys
+- ✅ **Token Auto-Refresh** - Frontend automatically refreshes tokens every 5 minutes
+- ✅ **Multi-Server Support** - Services communicate via API tokens across different servers
+- ✅ **Environment Isolation** - Separate .env files for each service (place_backend.env, unified_gateway.env, frontend.env)
+
+##### **Enhanced Service Architecture**
+- ✅ **Independent Startup Scripts** - `start_place_backend.py`, `start_unified_gateway.py`, `start_frontend.py`
+- ✅ **Authentication Testing** - `test_auth_flow.py` verifies complete authentication chain
+- ✅ **Secure API Endpoints** - All endpoints protected with Bearer token authentication
+- ✅ **Distributed Configuration** - No shared files required between services
+- ✅ **Cloud-Ready Deployment** - Each service can run on different cloud instances
+
 ##### **Core Enterprise Features**
-- ✅ **Multi-Location Architecture** - Scalable microservices design
-- ✅ **Unified Gateway API** - Centralized API orchestration layer
-- ✅ **Real-Time Analytics Dashboard** - Executive insights with Streamlit
+- ✅ **Multi-Location Architecture** - Scalable microservices design with token security
+- ✅ **Unified Gateway API** - Centralized API orchestration layer with token management
+- ✅ **Real-Time Analytics Dashboard** - Executive insights with automatic authentication
 - ✅ **Enterprise Security** - JWT, API keys, rate limiting, CORS protection
-- ✅ **Cross-Platform Deployment** - Windows, Linux, macOS support
-- ✅ **Cloud-Ready Infrastructure** - NGROK integration for instant cloud deployment
+- ✅ **Cross-Platform Deployment** - Windows, Linux, macOS support with token authentication
+- ✅ **Cloud-Ready Infrastructure** - NGROK integration with secure token communication
 
 ##### **Advanced Functionality**
 - ✅ **ZK Device Integration** - Native fingerprint device protocol support
@@ -1572,19 +2012,41 @@ Special thanks to our enterprise customers who provide valuable feedback, testin
 - **📅 Data Retention**: 5+ years of attendance history
 - **🌐 Geographic Distribution**: Multi-region deployment support
 
-### **🚀 Getting Started with Latest Version**
+### **🚀 Getting Started with Latest Token-Based Architecture**
 
-Ready to deploy the latest enterprise features? Get started in minutes:
+Ready to deploy the latest enterprise features with secure token authentication? Get started in minutes:
 
 ```bash
-# Quick enterprise deployment
+# 1. Clone the repository
 git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
 cd BiometricFlow-ZK
-python setup.py install --enterprise
-./scripts/deployment/start_all_services.sh
+
+# 2. Generate secure authentication keys
+python generate_keys.py
+# Creates: place_backend.env, unified_gateway.env, frontend.env
+
+# 3. Configure your devices (optional)
+# Edit devices_config.json with your ZK device IPs and settings
+
+# 4. Start all services with token authentication
+python start_place_backend.py    # Port 8000 - Device management
+python start_unified_gateway.py  # Port 9000 - API gateway  
+python start_frontend.py         # Port 8501 - Executive dashboard
+
+# 5. Test authentication flow
+python test_auth_flow.py
+# ✅ All services should authenticate successfully
+
+# 6. Access your enterprise dashboard
+# Open browser: http://localhost:8501
 ```
 
-Visit `http://localhost:8501` to access your enterprise dashboard!
+**Alternative: One-line enterprise deployment**
+```bash
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git && cd BiometricFlow-ZK && python generate_keys.py && python start_place_backend.py & python start_unified_gateway.py & python start_frontend.py
+```
+
+Visit `http://localhost:8501` to access your **enterprise dashboard with automatic token authentication**!
 
 ---
 

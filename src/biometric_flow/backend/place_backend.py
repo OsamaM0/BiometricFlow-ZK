@@ -15,10 +15,13 @@ import uvicorn
 import logging
 from pathlib import Path
 import sys
+import aiohttp
+import threading
+import time
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from place_backend.env file
+load_dotenv(dotenv_path='place_backend.env')
 
 # Add the core module to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'core'))
@@ -111,11 +114,28 @@ app.add_middleware(
 class Config:
     def __init__(self):
         # Backend configuration
-        self.backend_name = os.getenv("BACKEND_NAME", "Backend_1")
-        self.backend_port = int(os.getenv("BACKEND_PORT", "8000"))
+        self.backend_name = os.getenv("SERVICE_NAME", "place_backend")
+        self.backend_port = int(os.getenv("SERVICE_PORT", "8000"))
+        self.backend_host = os.getenv("SERVICE_HOST", "0.0.0.0")
+        
+        # Place identification
+        self.place_name = os.getenv("PLACE_NAME", "Unknown Place")
+        self.place_location = os.getenv("PLACE_LOCATION", "Unknown Location")
+        self.place_id = os.getenv("PLACE_ID", "place_001")
         
         # Multiple devices configuration
         self.devices = self._load_devices_config()
+        
+        # Unified Gateway connection settings
+        self.unified_gateway_url = os.getenv("UNIFIED_GATEWAY_URL", "http://localhost:9000")
+        self.unified_gateway_api_key = os.getenv("UNIFIED_GATEWAY_API_KEY", "")
+        self.auto_register_with_unified = os.getenv("AUTO_REGISTER_WITH_UNIFIED", "true").lower() == "true"
+        self.registration_retry_interval = int(os.getenv("REGISTRATION_RETRY_INTERVAL", "30"))
+        
+        # Working hours configuration
+        self.expected_working_hours = float(os.getenv("EXPECTED_WORKING_HOURS", "8"))
+        self.late_threshold_minutes = int(os.getenv("LATE_THRESHOLD_MINUTES", "15"))
+        self.early_leave_threshold_minutes = int(os.getenv("EARLY_LEAVE_THRESHOLD_MINUTES", "30"))
         
         # Holidays list - Include Fridays and Saturdays as weekend holidays
         self.holidays = [
@@ -144,7 +164,14 @@ class Config:
             if os.path.exists(config_path):
                 try:
                     with open(config_path, 'r') as f:
-                        devices = json.load(f)
+                        config_data = json.load(f)
+                    
+                    # Handle both old format (direct devices) and new format (nested under "devices")
+                    if "devices" in config_data:
+                        devices = config_data["devices"]
+                    else:
+                        devices = config_data
+                    
                     logger.info(f"Loaded {len(devices)} devices from config file: {config_path}")
                     return devices
                 except Exception as e:
@@ -188,6 +215,58 @@ class Config:
         return devices
 
 config = Config()
+
+# Auto-registration with Unified Gateway
+async def register_with_unified_gateway():
+    """Register this place backend with the unified gateway"""
+    if not config.auto_register_with_unified or not config.unified_gateway_api_key:
+        logger.info("Auto-registration disabled or API key not configured")
+        return
+    
+    registration_data = {
+        "place_id": config.place_id,
+        "place_name": config.place_name,
+        "place_location": config.place_location,
+        "backend_url": f"http://{config.backend_host}:{config.backend_port}",
+        "api_key": config.unified_gateway_api_key,
+        "devices": list(config.devices.keys())
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            headers = {
+                "Authorization": f"Bearer {config.unified_gateway_api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            async with session.post(
+                f"{config.unified_gateway_url}/place/register",
+                json=registration_data,
+                headers=headers,
+                timeout=30
+            ) as response:
+                if response.status == 200:
+                    logger.info(f"Successfully registered with unified gateway: {config.place_name}")
+                else:
+                    logger.error(f"Failed to register with unified gateway: {response.status}")
+    except Exception as e:
+        logger.error(f"Error registering with unified gateway: {e}")
+
+def start_background_registration():
+    """Start background thread for periodic registration attempts"""
+    def registration_loop():
+        while True:
+            try:
+                asyncio.run(register_with_unified_gateway())
+                time.sleep(config.registration_retry_interval)
+            except Exception as e:
+                logger.error(f"Background registration error: {e}")
+                time.sleep(30)  # Wait 30 seconds on error
+    
+    if config.auto_register_with_unified:
+        thread = threading.Thread(target=registration_loop, daemon=True)
+        thread.start()
+        logger.info("Started background registration thread")
 
 # Pydantic models
 class AttendanceRecord(BaseModel):
@@ -447,12 +526,16 @@ async def root(request: Request, _: bool = Depends(validate_api_key)):
     
     return create_secure_response({
         "service": "Secure Fingerprint Attendance Backend",
-        "version": "2.0.0",
+        "version": "3.0.0",
+        "place_id": config.place_id,
+        "place_name": config.place_name,
+        "place_location": config.place_location,
         "backend_name": config.backend_name,
         "total_devices": len(config.devices),
         "devices": list(config.devices.keys()),
         "status": "running",
-        "security_enabled": True
+        "security_enabled": True,
+        "unified_gateway_connected": bool(config.unified_gateway_api_key)
     })
 
 @app.get("/health", response_model=dict)
@@ -498,6 +581,82 @@ async def health_check_full():
         "timestamp": datetime.now().isoformat(),
         "backend_name": config.backend_name
     }
+
+@app.get("/place/info", response_model=dict)
+async def get_place_info(request: Request, _: bool = Depends(validate_api_key)):
+    """Get detailed place information for unified gateway registration"""
+    client_ip = request.client.host if request.client else "unknown"
+    log_security_event("PLACE_INFO_ACCESS", f"Place info accessed", client_ip)
+    
+    return create_secure_response({
+        "place_id": config.place_id,
+        "place_name": config.place_name,
+        "place_location": config.place_location,
+        "backend_url": f"http://{config.backend_host}:{config.backend_port}",
+        "devices": [
+            {
+                "name": device_name,
+                "ip": device_config["ip"],
+                "port": device_config["port"],
+                "enabled": device_config.get("enabled", True),
+                "description": device_config.get("description", "")
+            }
+            for device_name, device_config in config.devices.items()
+        ],
+        "total_devices": len(config.devices),
+        "expected_working_hours": config.expected_working_hours,
+        "api_endpoints": [
+            "/", "/health", "/place/info", "/devices", "/attendance", "/users", "/attendance/summary"
+        ],
+        "version": "3.0.0",
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.post("/auth/token", response_model=dict)
+async def generate_access_token(request: Request):
+    """Generate access token for Unified Gateway to use this place backend"""
+    try:
+        # Validate the request is coming from Unified Gateway
+        auth_header = request.headers.get("authorization", "")
+        if not auth_header.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Missing authorization header")
+        
+        provided_key = auth_header.replace("Bearer ", "")
+        expected_key = os.getenv("UNIFIED_GATEWAY_API_KEY", "")
+        
+        if not expected_key or provided_key != expected_key:
+            client_ip = request.client.host if request.client else "unknown"
+            log_security_event("INVALID_TOKEN_REQUEST", f"Invalid unified gateway key from {client_ip}", client_ip)
+            raise HTTPException(status_code=401, detail="Invalid gateway authentication")
+        
+        # Generate JWT token for this place backend
+        token_payload = {
+            "place_id": config.place_id,
+            "place_name": config.place_name,
+            "backend_url": f"http://{config.backend_host}:{config.backend_port}",
+            "permissions": ["read_devices", "read_attendance", "read_users", "read_summary"],
+            "expires_in": 3600  # 1 hour
+        }
+        
+        access_token = create_jwt_token(token_payload)
+        
+        client_ip = request.client.host if request.client else "unknown"
+        log_security_event("TOKEN_GENERATED", f"Access token generated for unified gateway", client_ip)
+        
+        return create_secure_response({
+            "access_token": access_token,
+            "token_type": "bearer",
+            "expires_in": 3600,
+            "place_id": config.place_id,
+            "backend_api_key": os.getenv("BACKEND_API_KEY", ""),
+            "issued_at": datetime.now().isoformat()
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating access token: {e}")
+        raise HTTPException(status_code=500, detail="Token generation failed")
 
 @app.get("/devices", response_model=DeviceListResponse)
 async def get_all_devices(request: Request, _: bool = Depends(validate_api_key)):
