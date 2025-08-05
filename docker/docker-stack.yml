@@ -1,0 +1,373 @@
+# =================================================================
+# BiometricFlow-ZK Docker Swarm Configuration
+# =================================================================
+# Production-ready Docker Swarm stack deployment
+# Version: 3.1.0
+
+version: '3.8'
+
+services:
+  # =================================================================
+  # Place Backend Service - Swarm Configuration
+  # =================================================================
+  place-backend:
+    image: biometric-flow/place-backend:3.1.0
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == worker
+          - node.labels.service_type == backend
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        failure_action: rollback
+        monitor: 60s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        monitor: 60s
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.place-backend.rule=Host(`api.biometric.local`) && PathPrefix(`/place`)"
+        - "traefik.http.services.place-backend.loadbalancer.server.port=8000"
+        - "traefik.http.middlewares.place-backend-strip.stripPrefix.prefixes=/place"
+        - "traefik.http.routers.place-backend.middlewares=place-backend-strip"
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - PLACE_BACKEND_PORT=8000
+      - PLACE_BACKEND_NAME=Place_1_Swarm
+      - DEVICES_CONFIG_FILE=devices_config.json
+      - RATE_LIMIT_REQUESTS=50
+    secrets:
+      - place_backend_env
+    configs:
+      - source: devices_config
+        target: /app/devices_config.json
+    volumes:
+      - place_backend_data:/app/data
+      - swarm_logs:/app/logs
+    networks:
+      - biometric-swarm-network
+      - traefik-public
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =================================================================
+  # Unified Gateway Service - Swarm Configuration
+  # =================================================================
+  unified-gateway:
+    image: biometric-flow/unified-gateway:3.1.0
+    deploy:
+      replicas: 3
+      placement:
+        constraints:
+          - node.role == worker
+          - node.labels.service_type == gateway
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        failure_action: rollback
+        monitor: 60s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        monitor: 60s
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.unified-gateway.rule=Host(`api.biometric.local`)"
+        - "traefik.http.services.unified-gateway.loadbalancer.server.port=9000"
+        - "traefik.http.middlewares.unified-gateway-auth.basicauth.users=admin:$$2y$$10$$..."
+    ports:
+      - "9000:9000"
+    environment:
+      - ENVIRONMENT=production
+      - UNIFIED_GATEWAY_PORT=9000
+      - PLACE_BACKEND_URL=http://place-backend:8000
+      - BACKEND_PLACES_CONFIG_FILE=backend_places_config.json
+      - RATE_LIMIT_REQUESTS=50
+    secrets:
+      - unified_gateway_env
+    configs:
+      - source: backend_places_config
+        target: /app/backend_places_config.json
+    volumes:
+      - gateway_data:/app/data
+      - swarm_logs:/app/logs
+    networks:
+      - biometric-swarm-network
+      - traefik-public
+    depends_on:
+      - place-backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # =================================================================
+  # Frontend Service - Swarm Configuration
+  # =================================================================
+  frontend:
+    image: biometric-flow/frontend:3.1.0
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == worker
+          - node.labels.service_type == frontend
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+        window: 120s
+      update_config:
+        parallelism: 1
+        delay: 30s
+        failure_action: rollback
+        monitor: 60s
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        monitor: 60s
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(`dashboard.biometric.local`)"
+        - "traefik.http.services.frontend.loadbalancer.server.port=8501"
+        - "traefik.http.middlewares.frontend-headers.headers.frameDeny=true"
+        - "traefik.http.middlewares.frontend-headers.headers.sslRedirect=true"
+    ports:
+      - "8501:8501"
+    environment:
+      - ENVIRONMENT=production
+      - FRONTEND_PORT=8501
+      - UNIFIED_GATEWAY_URL=http://unified-gateway:9000
+      - SESSION_TIMEOUT=3600
+      - AUTO_REFRESH_INTERVAL=300
+    secrets:
+      - frontend_env
+    volumes:
+      - frontend_data:/app/data
+      - swarm_logs:/app/logs
+    networks:
+      - biometric-swarm-network
+      - traefik-public
+    depends_on:
+      - unified-gateway
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  # =================================================================
+  # Traefik Load Balancer - Swarm Configuration
+  # =================================================================
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.docker.network=traefik-public"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@biometric.local"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/certificates/acme.json"
+      - "--metrics.prometheus=true"
+      - "--log.level=INFO"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=Host(`traefik.biometric.local`)"
+        - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+        - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$2y$$10$$..."
+        - "traefik.http.routers.traefik.middlewares=traefik-auth"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certificates:/certificates
+    networks:
+      - traefik-public
+
+  # =================================================================
+  # Monitoring Stack
+  # =================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.prometheus.rule=Host(`metrics.biometric.local`)"
+        - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+    configs:
+      - source: prometheus_config
+        target: /etc/prometheus/prometheus.yml
+    volumes:
+      - prometheus_data:/prometheus
+    networks:
+      - biometric-swarm-network
+      - traefik-public
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.grafana.rule=Host(`grafana.biometric.local`)"
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - biometric-swarm-network
+      - traefik-public
+
+# =================================================================
+# Networks
+# =================================================================
+networks:
+  biometric-swarm-network:
+    driver: overlay
+    external: false
+    attachable: true
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+    labels:
+      - "com.biometricflow.network=swarm"
+      - "com.biometricflow.environment=production"
+
+  traefik-public:
+    driver: overlay
+    external: true
+
+# =================================================================
+# Volumes
+# =================================================================
+volumes:
+  place_backend_data:
+    driver: local
+    labels:
+      - "com.biometricflow.volume=place-backend-data"
+      - "com.biometricflow.environment=swarm"
+
+  gateway_data:
+    driver: local
+    labels:
+      - "com.biometricflow.volume=gateway-data"
+      - "com.biometricflow.environment=swarm"
+
+  frontend_data:
+    driver: local
+    labels:
+      - "com.biometricflow.volume=frontend-data"
+      - "com.biometricflow.environment=swarm"
+
+  swarm_logs:
+    driver: local
+    labels:
+      - "com.biometricflow.volume=swarm-logs"
+      - "com.biometricflow.environment=swarm"
+
+  traefik_certificates:
+    driver: local
+
+  prometheus_data:
+    driver: local
+
+  grafana_data:
+    driver: local
+
+# =================================================================
+# Secrets
+# =================================================================
+secrets:
+  place_backend_env:
+    external: true
+
+  unified_gateway_env:
+    external: true
+
+  frontend_env:
+    external: true
+
+# =================================================================
+# Configs
+# =================================================================
+configs:
+  devices_config:
+    external: true
+
+  backend_places_config:
+    external: true
+
+  prometheus_config:
+    external: true

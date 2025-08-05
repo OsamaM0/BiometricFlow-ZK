@@ -1,0 +1,171 @@
+# =================================================================
+# BiometricFlow-ZK Docker Compose - Development Environment
+# =================================================================
+# Complete stack deployment with token-based authentication
+# Version: 3.1.0
+
+version: '3.8'
+
+services:
+  # =================================================================
+  # Place Backend Service - Device Management & Authentication
+  # =================================================================
+  place-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.place-backend
+      args:
+        BUILD_DATE: "2025-01-15"
+        VERSION: "3.1.0"
+        VCS_REF: "main"
+    container_name: biometric-place-backend
+    hostname: place-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - PLACE_BACKEND_PORT=8000
+      - PLACE_BACKEND_NAME=Place_1_Docker
+      - DEVICES_CONFIG_FILE=devices_config.json
+      - RATE_LIMIT_REQUESTS=100
+      - ALLOWED_ORIGINS=http://unified-gateway:9000
+    volumes:
+      - ./devices_config.json:/app/devices_config.json:ro
+      - ./logs:/app/logs
+      - place_backend_data:/app/data
+    networks:
+      - biometric-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.biometricflow.service=place-backend"
+      - "com.biometricflow.version=3.1.0"
+      - "com.biometricflow.description=Device management and authentication service"
+
+  # =================================================================
+  # Unified Gateway Service - API Aggregation & Token Management
+  # =================================================================
+  unified-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.unified-gateway
+      args:
+        BUILD_DATE: "2025-01-15"
+        VERSION: "3.1.0"
+        VCS_REF: "main"
+    container_name: biometric-unified-gateway
+    hostname: unified-gateway
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - ENVIRONMENT=production
+      - UNIFIED_GATEWAY_PORT=9000
+      - PLACE_BACKEND_URL=http://place-backend:8000
+      - BACKEND_PLACES_CONFIG_FILE=backend_places_config.json
+      - RATE_LIMIT_REQUESTS=100
+      - ALLOWED_ORIGINS=http://frontend:8501,http://localhost:8501
+    volumes:
+      - ./backend_places_config.json:/app/backend_places_config.json:ro
+      - ./logs:/app/logs
+      - gateway_data:/app/data
+    networks:
+      - biometric-network
+    depends_on:
+      place-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "com.biometricflow.service=unified-gateway"
+      - "com.biometricflow.version=3.1.0"
+      - "com.biometricflow.description=API gateway and token management service"
+
+  # =================================================================
+  # Frontend Service - Streamlit Dashboard
+  # =================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        BUILD_DATE: "2025-01-15"
+        VERSION: "3.1.0"
+        VCS_REF: "main"
+    container_name: biometric-frontend
+    hostname: frontend
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - ENVIRONMENT=production
+      - FRONTEND_PORT=8501
+      - UNIFIED_GATEWAY_URL=http://unified-gateway:9000
+      - SESSION_TIMEOUT=3600
+      - AUTO_REFRESH_INTERVAL=300
+    volumes:
+      - ./logs:/app/logs
+      - frontend_data:/app/data
+    networks:
+      - biometric-network
+    depends_on:
+      unified-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    labels:
+      - "com.biometricflow.service=frontend"
+      - "com.biometricflow.version=3.1.0"
+      - "com.biometricflow.description=Streamlit dashboard and user interface"
+
+# =================================================================
+# Network Configuration
+# =================================================================
+networks:
+  biometric-network:
+    driver: bridge
+    name: biometric-flow-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+    labels:
+      - "com.biometricflow.network=main"
+      - "com.biometricflow.description=Internal communication network"
+
+# =================================================================
+# Volume Configuration  
+# =================================================================
+volumes:
+  place_backend_data:
+    driver: local
+    name: biometric-place-backend-data
+    labels:
+      - "com.biometricflow.volume=place-backend-data"
+      - "com.biometricflow.description=Place backend persistent data"
+  
+  gateway_data:
+    driver: local
+    name: biometric-gateway-data
+    labels:
+      - "com.biometricflow.volume=gateway-data"
+      - "com.biometricflow.description=Gateway persistent data"
+  
+  frontend_data:
+    driver: local
+    name: biometric-frontend-data
+    labels:
+      - "com.biometricflow.volume=frontend-data"
+      - "com.biometricflow.description=Frontend persistent data"

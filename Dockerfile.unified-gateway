@@ -1,0 +1,134 @@
+# =================================================================
+# BiometricFlow-ZK Unified Gateway Docker Image
+# =================================================================
+# Multi-stage Docker build for API gateway service
+
+FROM python:3.10-slim as builder
+
+# Set build arguments
+ARG BUILD_DATE
+ARG VERSION=3.1.0
+ARG VCS_REF
+
+# Add metadata labels
+LABEL maintainer="Eng. Osama Mohamed <osama@biometricflow.com>" \
+      org.opencontainers.image.title="BiometricFlow-ZK Unified Gateway" \
+      org.opencontainers.image.description="Enterprise API gateway and aggregation service" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.vendor="BiometricFlow-ZK" \
+      org.opencontainers.image.source="https://github.com/OsamaM0/BiometricFlow-ZK"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app/src" \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Create working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Production stage
+FROM python:3.10-slim as production
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Create non-root user for security
+RUN groupadd -r biometric && useradd -r -g biometric biometric
+
+# Set Python environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app/src" \
+    SERVICE_TYPE=unified_gateway \
+    ENVIRONMENT=production
+
+# Create working directory and required directories
+WORKDIR /app
+RUN mkdir -p /app/logs /app/data /app/config && \
+    chown -R biometric:biometric /app
+
+# Copy application code
+COPY --chown=biometric:biometric src/ ./src/
+COPY --chown=biometric:biometric start_unified_gateway.py ./
+COPY --chown=biometric:biometric generate_keys.py ./
+
+# Copy configuration templates
+COPY --chown=biometric:biometric backend_places_config.json ./backend_places_config.json
+
+# Create environment file template
+RUN echo "# Unified Gateway Environment Configuration" > unified_gateway.env.template && \
+    echo "UNIFIED_GATEWAY_API_KEY=" >> unified_gateway.env.template && \
+    echo "PLACE_BACKEND_API_KEY=" >> unified_gateway.env.template && \
+    echo "JWT_SECRET=" >> unified_gateway.env.template && \
+    echo "ENVIRONMENT=production" >> unified_gateway.env.template && \
+    echo "UNIFIED_GATEWAY_PORT=9000" >> unified_gateway.env.template && \
+    echo "PLACE_BACKEND_URL=http://place-backend:8000" >> unified_gateway.env.template && \
+    echo "BACKEND_PLACES_CONFIG_FILE=backend_places_config.json" >> unified_gateway.env.template && \
+    echo "RATE_LIMIT_REQUESTS=100" >> unified_gateway.env.template && \
+    echo "RATE_LIMIT_WINDOW=60" >> unified_gateway.env.template && \
+    echo "ALLOWED_ORIGINS=http://localhost:8501" >> unified_gateway.env.template && \
+    chown biometric:biometric unified_gateway.env.template
+
+# Create startup script
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'set -e' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Generate environment file if not exists' >> /app/start.sh && \
+    echo 'if [ ! -f "unified_gateway.env" ]; then' >> /app/start.sh && \
+    echo '    echo "🔑 Generating environment configuration..."' >> /app/start.sh && \
+    echo '    cp unified_gateway.env.template unified_gateway.env' >> /app/start.sh && \
+    echo '    python generate_keys.py' >> /app/start.sh && \
+    echo 'fi' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Wait for place backend to be ready' >> /app/start.sh && \
+    echo 'echo "⏳ Waiting for place backend service..."' >> /app/start.sh && \
+    echo 'for i in {1..30}; do' >> /app/start.sh && \
+    echo '    if curl -s http://place-backend:8000/health > /dev/null 2>&1; then' >> /app/start.sh && \
+    echo '        echo "✅ Place backend is ready!"' >> /app/start.sh && \
+    echo '        break' >> /app/start.sh && \
+    echo '    fi' >> /app/start.sh && \
+    echo '    echo "Attempt $i/30 - Place backend not ready yet..."' >> /app/start.sh && \
+    echo '    sleep 2' >> /app/start.sh && \
+    echo 'done' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Start Unified Gateway service' >> /app/start.sh && \
+    echo 'echo "🚀 Starting Unified Gateway service..."' >> /app/start.sh && \
+    echo 'python start_unified_gateway.py' >> /app/start.sh && \
+    chmod +x /app/start.sh && \
+    chown biometric:biometric /app/start.sh
+
+# Switch to non-root user
+USER biometric
+
+# Expose port
+EXPOSE 9000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:9000/health || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/app/start.sh"]

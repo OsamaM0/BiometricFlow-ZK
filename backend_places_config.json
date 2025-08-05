@@ -3,8 +3,8 @@
     "place_001": {
       "name": "Back Office",
       "location": "Building A, Floor 1",
-      "url": "https://7c20187c856a.ngrok-free.app",
-      "api_key": "s-ZBBiizyZdy3y1MxxQbvAksAfGMG4anerLDiniwUSY",
+      "url": "http://localhost:8000",
+      "api_key": "S-KEY",
       "enabled": true,
       "health_check_endpoint": "/health",
       "timeout": 30
@@ -13,7 +13,7 @@
       "name": "Branch Office",
       "location": "Building B, Floor 2", 
       "url": "http://localhost:8001",
-      "api_key": "s-ZBBiizyZdy3y1MxxQbvAksAfGMG4anerLDiniwUSY",
+      "api_key": "S-KEY",
       "enabled": false,
       "health_check_endpoint": "/health",
       "timeout": 30

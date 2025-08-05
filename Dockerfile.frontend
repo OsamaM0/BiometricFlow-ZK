@@ -1,0 +1,128 @@
+# =================================================================
+# BiometricFlow-ZK Frontend Docker Image
+# =================================================================
+# Multi-stage Docker build for Streamlit frontend application
+
+FROM python:3.10-slim as builder
+
+# Set build arguments
+ARG BUILD_DATE
+ARG VERSION=3.1.0
+ARG VCS_REF
+
+# Add metadata labels
+LABEL maintainer="Eng. Osama Mohamed <osama@biometricflow.com>" \
+      org.opencontainers.image.title="BiometricFlow-ZK Frontend" \
+      org.opencontainers.image.description="Enterprise Streamlit dashboard for biometric attendance" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.vendor="BiometricFlow-ZK" \
+      org.opencontainers.image.source="https://github.com/OsamaM0/BiometricFlow-ZK"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app/src" \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Create working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Production stage
+FROM python:3.10-slim as production
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Create non-root user for security
+RUN groupadd -r biometric && useradd -r -g biometric biometric
+
+# Set Python environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app/src" \
+    SERVICE_TYPE=frontend \
+    ENVIRONMENT=production
+
+# Create working directory and required directories
+WORKDIR /app
+RUN mkdir -p /app/logs /app/data /app/config && \
+    chown -R biometric:biometric /app
+
+# Copy application code
+COPY --chown=biometric:biometric src/ ./src/
+COPY --chown=biometric:biometric start_frontend.py ./
+COPY --chown=biometric:biometric generate_keys.py ./
+
+# Create environment file template
+RUN echo "# Frontend Environment Configuration" > frontend.env.template && \
+    echo "FRONTEND_API_KEY=" >> frontend.env.template && \
+    echo "JWT_SECRET=" >> frontend.env.template && \
+    echo "ENVIRONMENT=production" >> frontend.env.template && \
+    echo "FRONTEND_PORT=8501" >> frontend.env.template && \
+    echo "UNIFIED_GATEWAY_URL=http://unified-gateway:9000" >> frontend.env.template && \
+    echo "SESSION_TIMEOUT=3600" >> frontend.env.template && \
+    echo "AUTO_REFRESH_INTERVAL=300" >> frontend.env.template && \
+    chown biometric:biometric frontend.env.template
+
+# Create startup script
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'set -e' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Generate environment file if not exists' >> /app/start.sh && \
+    echo 'if [ ! -f "frontend.env" ]; then' >> /app/start.sh && \
+    echo '    echo "🔑 Generating environment configuration..."' >> /app/start.sh && \
+    echo '    cp frontend.env.template frontend.env' >> /app/start.sh && \
+    echo '    python generate_keys.py' >> /app/start.sh && \
+    echo 'fi' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Wait for unified gateway to be ready' >> /app/start.sh && \
+    echo 'echo "⏳ Waiting for unified gateway service..."' >> /app/start.sh && \
+    echo 'for i in {1..30}; do' >> /app/start.sh && \
+    echo '    if curl -s http://unified-gateway:9000/health > /dev/null 2>&1; then' >> /app/start.sh && \
+    echo '        echo "✅ Unified gateway is ready!"' >> /app/start.sh && \
+    echo '        break' >> /app/start.sh && \
+    echo '    fi' >> /app/start.sh && \
+    echo '    echo "Attempt $i/30 - Unified gateway not ready yet..."' >> /app/start.sh && \
+    echo '    sleep 2' >> /app/start.sh && \
+    echo 'done' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Start Frontend service' >> /app/start.sh && \
+    echo 'echo "🚀 Starting Frontend service..."' >> /app/start.sh && \
+    echo 'python start_frontend.py' >> /app/start.sh && \
+    chmod +x /app/start.sh && \
+    chown biometric:biometric /app/start.sh
+
+# Switch to non-root user
+USER biometric
+
+# Expose port
+EXPOSE 8501
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:8501/healthz || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/app/start.sh"]

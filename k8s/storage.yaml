@@ -1,0 +1,79 @@
+# =================================================================
+# BiometricFlow-ZK Kubernetes Persistent Volumes
+# =================================================================
+
+# =================================================================
+# StorageClass for Dynamic Provisioning
+# =================================================================
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: biometric-flow-ssd
+  labels:
+    app.kubernetes.io/name: biometric-flow-zk
+provisioner: kubernetes.io/aws-ebs  # Change based on your cloud provider
+parameters:
+  type: gp3
+  iopsPerGB: "10"
+  fsType: ext4
+  encrypted: "true"
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+# =================================================================
+# PersistentVolumeClaim for Place Backend
+# =================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: place-backend-data
+  namespace: biometric-flow
+  labels:
+    app.kubernetes.io/name: biometric-flow-zk
+    app.kubernetes.io/component: place-backend
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: biometric-flow-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
+# =================================================================
+# PersistentVolumeClaim for Unified Gateway
+# =================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: unified-gateway-data
+  namespace: biometric-flow
+  labels:
+    app.kubernetes.io/name: biometric-flow-zk
+    app.kubernetes.io/component: unified-gateway
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: biometric-flow-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+# =================================================================
+# PersistentVolumeClaim for Frontend
+# =================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: frontend-data
+  namespace: biometric-flow
+  labels:
+    app.kubernetes.io/name: biometric-flow-zk
+    app.kubernetes.io/component: frontend
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: biometric-flow-ssd
+  resources:
+    requests:
+      storage: 5Gi

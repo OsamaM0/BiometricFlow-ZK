@@ -1,0 +1,262 @@
+# =================================================================
+# BiometricFlow-ZK Docker Compose - Production Environment
+# =================================================================
+# Production-optimized deployment with security hardening
+# Version: 3.1.0
+
+version: '3.8'
+
+services:
+  # =================================================================
+  # Place Backend Service - Production Configuration
+  # =================================================================
+  place-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.place-backend
+      args:
+        BUILD_DATE: "2025-01-15"
+        VERSION: "3.1.0"
+        VCS_REF: "main"
+    container_name: biometric-place-backend-prod
+    hostname: place-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - PLACE_BACKEND_PORT=8000
+      - PLACE_BACKEND_NAME=${PLACE_BACKEND_NAME:-Place_1_Production}
+      - DEVICES_CONFIG_FILE=devices_config.json
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-50}
+      - ALLOWED_ORIGINS=http://unified-gateway:9000
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./devices_config.json:/app/devices_config.json:ro
+      - ./place_backend.env:/app/place_backend.env:ro
+      - production_logs:/app/logs
+      - place_backend_data:/app/data
+    networks:
+      - biometric-production-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.biometricflow.service=place-backend"
+      - "com.biometricflow.environment=production"
+      - "com.biometricflow.version=3.1.0"
+
+  # =================================================================
+  # Unified Gateway Service - Production Configuration
+  # =================================================================
+  unified-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.unified-gateway
+      args:
+        BUILD_DATE: "2025-01-15"
+        VERSION: "3.1.0"
+        VCS_REF: "main"
+    container_name: biometric-unified-gateway-prod
+    hostname: unified-gateway
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      - ENVIRONMENT=production
+      - UNIFIED_GATEWAY_PORT=9000
+      - PLACE_BACKEND_URL=http://place-backend:8000
+      - BACKEND_PLACES_CONFIG_FILE=backend_places_config.json
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-50}
+      - ALLOWED_ORIGINS=http://frontend:8501,https://${FRONTEND_DOMAIN:-localhost}:8501
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./backend_places_config.json:/app/backend_places_config.json:ro
+      - ./unified_gateway.env:/app/unified_gateway.env:ro
+      - production_logs:/app/logs
+      - gateway_data:/app/data
+    networks:
+      - biometric-production-network
+    depends_on:
+      place-backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 768M
+        reservations:
+          cpus: '0.7'
+          memory: 384M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "com.biometricflow.service=unified-gateway"
+      - "com.biometricflow.environment=production"
+      - "com.biometricflow.version=3.1.0"
+
+  # =================================================================
+  # Frontend Service - Production Configuration
+  # =================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        BUILD_DATE: "2025-01-15"
+        VERSION: "3.1.0"
+        VCS_REF: "main"
+    container_name: biometric-frontend-prod
+    hostname: frontend
+    restart: always
+    ports:
+      - "8501:8501"
+    environment:
+      - ENVIRONMENT=production
+      - FRONTEND_PORT=8501
+      - UNIFIED_GATEWAY_URL=http://unified-gateway:9000
+      - SESSION_TIMEOUT=${SESSION_TIMEOUT:-3600}
+      - AUTO_REFRESH_INTERVAL=${AUTO_REFRESH_INTERVAL:-300}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./frontend.env:/app/frontend.env:ro
+      - production_logs:/app/logs
+      - frontend_data:/app/data
+    networks:
+      - biometric-production-network
+    depends_on:
+      unified-gateway:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=200m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    labels:
+      - "com.biometricflow.service=frontend"
+      - "com.biometricflow.environment=production"
+      - "com.biometricflow.version=3.1.0"
+
+  # =================================================================
+  # Log Aggregation Service (Optional)
+  # =================================================================
+  log-aggregator:
+    image: fluent/fluentd:v1.16-debian-1
+    container_name: biometric-log-aggregator
+    restart: unless-stopped
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - ./docker/fluentd/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - production_logs:/fluentd/log
+    networks:
+      - biometric-production-network
+    labels:
+      - "com.biometricflow.service=log-aggregator"
+      - "com.biometricflow.environment=production"
+      - "com.biometricflow.description=Centralized logging service"
+
+# =================================================================
+# Network Configuration - Production
+# =================================================================
+networks:
+  biometric-production-network:
+    driver: bridge
+    name: biometric-flow-production
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+    labels:
+      - "com.biometricflow.network=production"
+      - "com.biometricflow.environment=production"
+
+# =================================================================
+# Volume Configuration - Production
+# =================================================================
+volumes:
+  place_backend_data:
+    driver: local
+    name: biometric-place-backend-prod-data
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PLACE_BACKEND_DATA_PATH:-./data/place_backend}
+    labels:
+      - "com.biometricflow.volume=place-backend-data"
+      - "com.biometricflow.environment=production"
+  
+  gateway_data:
+    driver: local
+    name: biometric-gateway-prod-data
+    driver_opts:
+      type: none
+      o: bind
+      device: ${GATEWAY_DATA_PATH:-./data/gateway}
+    labels:
+      - "com.biometricflow.volume=gateway-data"
+      - "com.biometricflow.environment=production"
+  
+  frontend_data:
+    driver: local
+    name: biometric-frontend-prod-data
+    driver_opts:
+      type: none
+      o: bind
+      device: ${FRONTEND_DATA_PATH:-./data/frontend}
+    labels:
+      - "com.biometricflow.volume=frontend-data"
+      - "com.biometricflow.environment=production"
+
+  production_logs:
+    driver: local
+    name: biometric-production-logs
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOGS_PATH:-./logs}
+    labels:
+      - "com.biometricflow.volume=production-logs"
+      - "com.biometricflow.environment=production"

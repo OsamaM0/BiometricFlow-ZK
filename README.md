@@ -344,7 +344,27 @@ BiometricFlow-ZK provides a **complete RESTful API ecosystem** with enterprise-g
 
 ### **⚡ One-Click Enterprise Setup**
 
-#### **🔒 Production Deployment with Token Authentication (Recommended)**
+#### **� One-Click Docker Deployment (NEW)**
+```bash
+# Complete Docker deployment with authentication
+git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
+cd BiometricFlow-ZK
+
+# Linux/macOS
+./docker/deploy.sh setup && ./docker/deploy.sh start dev
+
+# Windows PowerShell
+.\docker\deploy.ps1 setup
+.\docker\deploy.ps1 start dev
+
+# Production deployment
+./docker/deploy.sh start prod  # Linux/macOS
+.\docker\deploy.ps1 start prod  # Windows
+
+# Access dashboard at http://localhost:8501
+```
+
+#### **�🔒 Production Deployment with Token Authentication (Recommended)**
 ```powershell
 # Windows Enterprise Setup
 git clone https://github.com/OsamaM0/BiometricFlow-ZK.git
@@ -1887,12 +1907,21 @@ Special thanks to our enterprise customers who provide valuable feedback, testin
 
 ## 📊 Project Status & Roadmap
 
-### **🚀 Current Release: v3.1.0 Enterprise with Token Authentication**
+### **🚀 Current Release: v3.2.0 Enterprise with Docker & Token Authentication**
 **Status**: ✅ **Production Ready** | **Last Updated**: January 2025
 
 #### **✅ Completed Features**
 
-##### **Enterprise Token-Based Authentication (NEW)**
+##### **🐳 Docker Containerization (NEW)**
+- ✅ **Complete Docker Support** - Multi-stage Dockerfiles for all services with optimized production builds
+- ✅ **Docker Compose Orchestration** - Automated service orchestration with development and production configurations
+- ✅ **Container Security** - Non-root execution, read-only filesystems, and security hardening
+- ✅ **Volume Persistence** - Data persistence with automated backup and recovery capabilities
+- ✅ **Health Monitoring** - Comprehensive health checks and monitoring for all containerized services
+- ✅ **Resource Management** - CPU and memory limits with production-ready resource allocation
+- ✅ **Management Scripts** - Cross-platform deployment scripts for Windows (PowerShell) and Linux/macOS (Bash)
+
+##### **Enterprise Token-Based Authentication**
 - ✅ **JWT Token Authentication** - Secure token-based authentication between all services
 - ✅ **Service Independence** - Each service deployable on separate servers with no file dependencies
 - ✅ **Automatic Key Generation** - `generate_keys.py` creates all required authentication keys

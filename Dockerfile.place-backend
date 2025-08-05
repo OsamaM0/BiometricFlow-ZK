@@ -1,0 +1,120 @@
+# =================================================================
+# BiometricFlow-ZK Place Backend Docker Image
+# =================================================================
+# Multi-stage Docker build for optimized production deployment
+# Supports ARM64 and AMD64 architectures
+
+FROM python:3.10-slim as builder
+
+# Set build arguments
+ARG BUILD_DATE
+ARG VERSION=3.1.0
+ARG VCS_REF
+
+# Add metadata labels
+LABEL maintainer="Eng. Osama Mohamed <osama@biometricflow.com>" \
+      org.opencontainers.image.title="BiometricFlow-ZK Place Backend" \
+      org.opencontainers.image.description="Enterprise fingerprint attendance backend service" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.vendor="BiometricFlow-ZK" \
+      org.opencontainers.image.source="https://github.com/OsamaM0/BiometricFlow-ZK"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    libffi-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app/src" \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Create working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Production stage
+FROM python:3.10-slim as production
+
+# Copy Python packages from builder
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Create non-root user for security
+RUN groupadd -r biometric && useradd -r -g biometric biometric
+
+# Set Python environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH="/app/src" \
+    SERVICE_TYPE=place_backend \
+    ENVIRONMENT=production
+
+# Create working directory and required directories
+WORKDIR /app
+RUN mkdir -p /app/logs /app/data /app/config && \
+    chown -R biometric:biometric /app
+
+# Copy application code
+COPY --chown=biometric:biometric src/ ./src/
+COPY --chown=biometric:biometric start_place_backend.py ./
+COPY --chown=biometric:biometric generate_keys.py ./
+
+# Copy configuration templates
+COPY --chown=biometric:biometric devices_config.json ./devices_config.json
+
+# Create environment file template
+RUN echo "# Place Backend Environment Configuration" > place_backend.env.template && \
+    echo "PLACE_BACKEND_API_KEY=" >> place_backend.env.template && \
+    echo "JWT_SECRET=" >> place_backend.env.template && \
+    echo "ENVIRONMENT=production" >> place_backend.env.template && \
+    echo "PLACE_BACKEND_NAME=Place_1_Docker" >> place_backend.env.template && \
+    echo "PLACE_BACKEND_PORT=8000" >> place_backend.env.template && \
+    echo "DEVICES_CONFIG_FILE=devices_config.json" >> place_backend.env.template && \
+    echo "RATE_LIMIT_REQUESTS=100" >> place_backend.env.template && \
+    echo "RATE_LIMIT_WINDOW=60" >> place_backend.env.template && \
+    echo "ALLOWED_ORIGINS=http://localhost:9000" >> place_backend.env.template && \
+    chown biometric:biometric place_backend.env.template
+
+# Create startup script
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo 'set -e' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Generate environment file if not exists' >> /app/start.sh && \
+    echo 'if [ ! -f "place_backend.env" ]; then' >> /app/start.sh && \
+    echo '    echo "🔑 Generating environment configuration..."' >> /app/start.sh && \
+    echo '    cp place_backend.env.template place_backend.env' >> /app/start.sh && \
+    echo '    python generate_keys.py' >> /app/start.sh && \
+    echo 'fi' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Start Place Backend service' >> /app/start.sh && \
+    echo 'echo "🚀 Starting Place Backend service..."' >> /app/start.sh && \
+    echo 'python start_place_backend.py' >> /app/start.sh && \
+    chmod +x /app/start.sh && \
+    chown biometric:biometric /app/start.sh
+
+# Switch to non-root user
+USER biometric
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Set entrypoint
+ENTRYPOINT ["/app/start.sh"]

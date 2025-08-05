@@ -76,7 +76,36 @@ UNIFIED_GATEWAY_API_KEY=nZTueOgEr7vRH8MYtm3MwiEDh1c5tqw1Zw5EALHN4YU
 
 ## 🚀 Startup Workflow
 
-### 1. Generate Security Keys
+### 🐳 Docker Deployment (Recommended)
+
+#### Option A: Quick Docker Start (Production Ready)
+```bash
+# Linux/macOS
+./docker/deploy.sh setup
+./docker/deploy.sh start prod
+
+# Windows PowerShell
+.\docker\deploy.ps1 setup
+.\docker\deploy.ps1 start prod
+
+# Verify deployment
+./docker/health_check.sh
+```
+
+#### Option B: Development Docker Environment
+```bash
+# Linux/macOS
+./docker/deploy.sh setup
+./docker/deploy.sh start dev
+
+# Windows PowerShell
+.\docker\deploy.ps1 setup
+.\docker\deploy.ps1 start dev
+```
+
+### 📦 Manual Deployment (Alternative)
+
+#### Option A: Generate Security Keys
 ```bash
 # Activate virtual environment
 .\.venv\Scripts\Activate.ps1
@@ -85,9 +114,9 @@ UNIFIED_GATEWAY_API_KEY=nZTueOgEr7vRH8MYtm3MwiEDh1c5tqw1Zw5EALHN4YU
 python generate_keys.py
 ```
 
-### 2. Start Services in Order
+#### Option B: Start Services in Order
 
-#### Option A: Start Individual Services
+#### Individual Service Start
 ```bash
 # Terminal 1: Start Place Backend
 python start_place_backend.py
@@ -99,13 +128,13 @@ python start_unified_gateway.py
 python start_frontend.py
 ```
 
-#### Option B: Start All Services with Orchestrator
+#### Automated Service Start
 ```bash
 # Start all services automatically
 python start_all_services.py
 ```
 
-### 3. Verify Authentication
+#### Option C: Verify Authentication
 ```bash
 # Test the complete authentication flow
 python test_auth_flow.py
@@ -113,11 +142,11 @@ python test_auth_flow.py
 
 ## 🔗 Service URLs
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| Place Backend | http://localhost:8000 | Device data and local operations |
-| Unified Gateway | http://localhost:9000 | API aggregation and routing |
-| Frontend | http://localhost:8501 | User interface and data visualization |
+| Service | Docker URL | Manual URL | Purpose |
+|---------|------------|------------|---------|
+| Place Backend | http://localhost:8000 | http://localhost:8000 | Device data and local operations |
+| Unified Gateway | http://localhost:9000 | http://localhost:9000 | API aggregation and routing |
+| Frontend | http://localhost:8501 | http://localhost:8501 | User interface and data visualization |
 
 ## 🔐 Token Authentication Endpoints
 
@@ -205,3 +234,62 @@ When everything is working correctly, you should see:
 4. **Authentication Flow**: All services communicating with proper tokens
 
 The system is now fully token-based, secure, and ready for multi-server deployment! 🚀
+
+## 🐳 Docker Deployment Details
+
+### Docker Benefits
+- ✅ **Consistent Environment** - Same runtime environment across all platforms
+- ✅ **Easy Scaling** - Container orchestration with resource management
+- ✅ **Isolation** - Complete service isolation with secure networking
+- ✅ **Production Ready** - Optimized containers with security hardening
+- ✅ **Simple Management** - One-command deployment and monitoring
+
+### Docker Architecture
+```
+🐳 Docker Containers
+├── biometric-place-backend     (Port 8000)
+├── biometric-unified-gateway   (Port 9000)
+└── biometric-frontend         (Port 8501)
+
+🌐 Docker Network: biometric-flow-network
+💾 Docker Volumes: Persistent data storage
+🔍 Health Checks: Automatic service monitoring
+```
+
+### Docker Management Commands
+
+```bash
+# Status and monitoring
+./docker/deploy.sh status          # Service status
+./docker/health_check.sh           # Comprehensive health check
+./docker/deploy.sh logs [service]  # View logs
+
+# Service control
+./docker/deploy.sh stop            # Stop all services
+./docker/deploy.sh restart         # Restart all services
+./docker/deploy.sh cleanup         # Clean up resources
+
+# Production operations
+./docker/deploy.sh start prod      # Production deployment
+./docker/health_check.sh --continuous 60  # Continuous monitoring
+```
+
+### Docker Troubleshooting
+
+```bash
+# Check container status
+docker-compose ps
+
+# View service logs
+docker-compose logs place-backend
+docker-compose logs unified-gateway
+docker-compose logs frontend
+
+# Access container shell
+docker exec -it biometric-place-backend /bin/bash
+
+# Resource monitoring
+docker stats
+```
+
+For complete Docker documentation, see: **[DOCKER_GUIDE.md](DOCKER_GUIDE.md)**
